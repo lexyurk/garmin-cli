@@ -66,6 +66,7 @@ garmin health sleep --format json
 garmin health sleep --days 7
 garmin activities list --days 7 --limit 50
 garmin activities list --from 2026-01-01 --to 2026-02-01 --limit 50
+garmin activities list --date 2026-02-16 --limit 50
 ```
 
 ## Shell completion

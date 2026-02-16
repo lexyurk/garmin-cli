@@ -28,6 +28,7 @@ func NewActivitiesCmd(opts *globalOptions) *cobra.Command {
 
 func newActivitiesListCmd(opts *globalOptions) *cobra.Command {
 	var limit int
+	var date string
 	var after string
 	var before string
 	var from string
@@ -43,7 +44,7 @@ func newActivitiesListCmd(opts *globalOptions) *cobra.Command {
 				return fmt.Errorf("--limit must be > 0")
 			}
 
-			afterResolved, beforeResolved, err := resolveActivitiesDateFilters(after, before, from, to, days, time.Now())
+			afterResolved, beforeResolved, err := resolveActivitiesDateFilters(date, after, before, from, to, days, time.Now())
 			if err != nil {
 				return err
 			}
@@ -82,6 +83,7 @@ func newActivitiesListCmd(opts *globalOptions) *cobra.Command {
 	}
 
 	cmd.Flags().IntVar(&limit, "limit", 20, "Number of activities to return")
+	cmd.Flags().StringVar(&date, "date", "", "Date (YYYY-MM-DD)")
 	cmd.Flags().StringVar(&after, "after", "", "Activities on/after date (YYYY-MM-DD, inclusive)")
 	cmd.Flags().StringVar(&before, "before", "", "Activities on/before date (YYYY-MM-DD, inclusive)")
 	cmd.Flags().StringVar(&from, "from", "", "Start date (YYYY-MM-DD, inclusive)")
@@ -259,16 +261,20 @@ type activitiesSplitsJSON struct {
 	Splits     any   `json:"splits"`
 }
 
-func resolveActivitiesDateFilters(after, before, from, to string, days int, now time.Time) (string, string, error) {
+func resolveActivitiesDateFilters(date, after, before, from, to string, days int, now time.Time) (string, string, error) {
 	if days < 0 {
 		return "", "", fmt.Errorf("--days must be >= 0")
 	}
 
+	date = strings.TrimSpace(date)
 	after = strings.TrimSpace(after)
 	before = strings.TrimSpace(before)
 	from = strings.TrimSpace(from)
 	to = strings.TrimSpace(to)
 
+	if date != "" && (after != "" || before != "" || from != "" || to != "" || days > 0) {
+		return "", "", fmt.Errorf("use either --date or --after/--before/--from/--to (not both)")
+	}
 	if after != "" && from != "" {
 		return "", "", fmt.Errorf("use either --after or --from (not both)")
 	}
@@ -286,6 +292,9 @@ func resolveActivitiesDateFilters(after, before, from, to string, days int, now 
 
 	if days > 0 && (after != "" || before != "") {
 		return "", "", fmt.Errorf("use either --days or --after/--before/--from/--to (not both)")
+	}
+	if date != "" {
+		return date, date, nil
 	}
 	if days == 0 {
 		return after, before, nil
