@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -34,7 +35,8 @@ type Client struct {
 	refreshOAuth2 func(ctx context.Context, configDir string, oauth1 auth.OAuth1Token) (auth.OAuth2Token, error)
 	saveSession   func(configDir, profile string, s *auth.Session) error
 
-	logf func(format string, args ...any)
+	logf  func(format string, args ...any)
+	sleep func(d time.Duration)
 }
 
 type Options struct {
@@ -43,6 +45,7 @@ type Options struct {
 	RefreshOAuth2 func(ctx context.Context, configDir string, oauth1 auth.OAuth1Token) (auth.OAuth2Token, error)
 	SaveSession   func(configDir, profile string, s *auth.Session) error
 	Logf          func(format string, args ...any)
+	Sleep         func(d time.Duration)
 }
 
 // New loads tokens for profile and returns a ready-to-use client.
@@ -73,6 +76,11 @@ func NewWithSession(configDir, profile string, session *auth.Session, opts Optio
 		saveFn = auth.SaveSession
 	}
 
+	sleepFn := opts.Sleep
+	if sleepFn == nil {
+		sleepFn = time.Sleep
+	}
+
 	return &Client{
 		httpClient:    httpClient,
 		baseURL:       u,
@@ -82,6 +90,7 @@ func NewWithSession(configDir, profile string, session *auth.Session, opts Optio
 		refreshOAuth2: refreshFn,
 		saveSession:   saveFn,
 		logf:          opts.Logf,
+		sleep:         sleepFn,
 	}
 }
 
@@ -218,6 +227,7 @@ func (c *Client) ensureFreshOAuth2(ctx context.Context) error {
 func (c *Client) doWithRetry(req *http.Request) (*http.Response, error) {
 	// Basic retry for rate limits and transient errors.
 	const maxRetries = 3
+	const maxRetryAfter = 5 * time.Second
 	var lastErr error
 	for attempt := 0; attempt <= maxRetries; attempt++ {
 		r := req
@@ -264,9 +274,43 @@ func (c *Client) doWithRetry(req *http.Request) (*http.Response, error) {
 		if attempt == maxRetries {
 			break
 		}
-		time.Sleep(time.Duration(200*(1<<attempt)) * time.Millisecond)
+
+		backoff := time.Duration(200*(1<<attempt)) * time.Millisecond
+		delay := backoff
+		if resp != nil && resp.StatusCode == http.StatusTooManyRequests {
+			if ra := retryAfterDelay(resp.Header.Get("Retry-After"), time.Now()); ra > delay {
+				delay = ra
+			}
+		}
+		if delay > maxRetryAfter {
+			delay = maxRetryAfter
+		}
+
+		c.sleep(delay)
 	}
 	return nil, lastErr
+}
+
+func retryAfterDelay(v string, now time.Time) time.Duration {
+	v = strings.TrimSpace(v)
+	if v == "" {
+		return 0
+	}
+	// Retry-After can be seconds or an HTTP-date.
+	if secs, err := strconv.Atoi(v); err == nil {
+		if secs <= 0 {
+			return 0
+		}
+		return time.Duration(secs) * time.Second
+	}
+	if t, err := http.ParseTime(v); err == nil {
+		d := t.Sub(now)
+		if d <= 0 {
+			return 0
+		}
+		return d
+	}
+	return 0
 }
 
 func stringsTitle(s string) string {

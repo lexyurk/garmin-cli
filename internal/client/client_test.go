@@ -195,3 +195,45 @@ func TestClient_Logf_DoesNotLeakAuthorization(t *testing.T) {
 		t.Fatalf("expected logs not to leak auth, got:\n%s", logs)
 	}
 }
+
+func TestClient_RetriesOn429_HonorsRetryAfter(t *testing.T) {
+	sess := &auth.Session{
+		OAuth1: auth.OAuth1Token{OAuthToken: "o1", OAuthTokenSecret: "o1s"},
+		OAuth2: auth.OAuth2Token{TokenType: "bearer", AccessToken: "ok", ExpiresAt: time.Now().Add(time.Hour).Unix()},
+	}
+
+	attempts := 0
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		attempts++
+		if attempts == 1 {
+			w.Header().Set("Retry-After", "2")
+			w.WriteHeader(http.StatusTooManyRequests)
+			_, _ = w.Write([]byte(`{"message":"slow down"}`))
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"ok":true}`))
+	}))
+	defer srv.Close()
+
+	var slept time.Duration
+	c := NewWithSession("ignored", "default", sess, Options{
+		HTTPClient: srv.Client(),
+		BaseURL:    srv.URL,
+		Sleep: func(d time.Duration) {
+			slept = d
+		},
+	})
+
+	var out map[string]any
+	if err := c.GetJSON(context.Background(), "/ping", nil, &out); err != nil {
+		t.Fatalf("GetJSON error: %v", err)
+	}
+	if attempts != 2 {
+		t.Fatalf("expected 2 attempts, got %d", attempts)
+	}
+	if slept < 2*time.Second {
+		t.Fatalf("expected sleep to honor Retry-After >=2s, got %s", slept)
+	}
+}
