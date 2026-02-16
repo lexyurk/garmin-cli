@@ -52,15 +52,15 @@ func newTrainingStatusCmd(opts *globalOptions) *cobra.Command {
 				return garmintraining.GetStatus(ctx, c, date)
 			})
 			if err != nil {
-				return handleAuthedError(opts, err)
+				return handleAuthedErrorTo(cmd.ErrOrStderr(), opts, err)
 			}
 
 			if opts.Format == "json" {
-				return output.JSON(results)
+				return output.JSONTo(cmd.OutOrStdout(), results)
 			}
 			if len(results) == 1 {
 				r := results[0]
-				return renderKV(opts.Format, "Training status", map[string]string{
+				return renderKVTo(cmd.OutOrStdout(), opts.Format, "Training status", map[string]string{
 					"date":      r.Date,
 					"status":    r.StatusPhrase,
 					"status_id": formatMaybeInt(r.StatusID),
@@ -78,7 +78,7 @@ func newTrainingStatusCmd(opts *globalOptions) *cobra.Command {
 					r.LoadLevelTrend,
 				})
 			}
-			return renderTable(opts.Format, []string{"date", "status", "status_id", "weekly_load", "trend"}, rows)
+			return renderTableTo(cmd.OutOrStdout(), opts.Format, []string{"date", "status", "status_id", "weekly_load", "trend"}, rows)
 		},
 	}
 	cmd.Flags().StringVar(&date, "date", "", "Date (YYYY-MM-DD, default: today)")
@@ -113,15 +113,15 @@ func newTrainingReadinessCmd(opts *globalOptions) *cobra.Command {
 				return garmintraining.GetReadiness(ctx, c, date)
 			})
 			if err != nil {
-				return handleAuthedError(opts, err)
+				return handleAuthedErrorTo(cmd.ErrOrStderr(), opts, err)
 			}
 
 			if opts.Format == "json" {
-				return output.JSON(results)
+				return output.JSONTo(cmd.OutOrStdout(), results)
 			}
 			if len(results) == 1 {
 				r := results[0]
-				return renderKV(opts.Format, "Training readiness", map[string]string{
+				return renderKVTo(cmd.OutOrStdout(), opts.Format, "Training readiness", map[string]string{
 					"date":            r.Date,
 					"score":           formatMaybeInt(r.Score),
 					"level":           r.Level,
@@ -143,7 +143,7 @@ func newTrainingReadinessCmd(opts *globalOptions) *cobra.Command {
 					formatMaybeInt(r.AcuteLoad),
 				})
 			}
-			return renderTable(opts.Format, []string{"date", "score", "level", "sleep_score", "hrv_weekly_avg", "acute_load"}, rows)
+			return renderTableTo(cmd.OutOrStdout(), opts.Format, []string{"date", "score", "level", "sleep_score", "hrv_weekly_avg", "acute_load"}, rows)
 		},
 	}
 	cmd.Flags().StringVar(&date, "date", "", "Date (YYYY-MM-DD, default: today)")
@@ -166,16 +166,16 @@ func newTrainingVo2maxCmd(opts *globalOptions) *cobra.Command {
 			ctx := cmd.Context()
 			vo2, err := garmintraining.GetVO2Max(ctx, c)
 			if err != nil {
-				return handleAuthedError(opts, err)
+				return handleAuthedErrorTo(cmd.ErrOrStderr(), opts, err)
 			}
 
 			if opts.Format == "json" {
-				return output.JSON(vo2maxJSON{
+				return output.JSONTo(cmd.OutOrStdout(), vo2maxJSON{
 					Running: vo2.Running,
 					Cycling: vo2.Cycling,
 				})
 			}
-			return renderKV(opts.Format, "VO2 max", map[string]string{
+			return renderKVTo(cmd.OutOrStdout(), opts.Format, "VO2 max", map[string]string{
 				"running": formatMaybeFloat0(vo2.Running, 1),
 				"cycling": formatMaybeFloat0(vo2.Cycling, 1),
 			})
@@ -209,15 +209,15 @@ func newTrainingHrvCmd(opts *globalOptions) *cobra.Command {
 				return garmintraining.GetHRV(ctx, c, date)
 			})
 			if err != nil {
-				return handleAuthedError(opts, err)
+				return handleAuthedErrorTo(cmd.ErrOrStderr(), opts, err)
 			}
 
 			if opts.Format == "json" {
-				return output.JSON(results)
+				return output.JSONTo(cmd.OutOrStdout(), results)
 			}
 			if len(results) == 1 {
 				r := results[0]
-				return renderKV(opts.Format, "HRV", map[string]string{
+				return renderKVTo(cmd.OutOrStdout(), opts.Format, "HRV", map[string]string{
 					"date":          r.Date,
 					"status":        r.Status,
 					"weekly_avg":    formatMaybeInt(r.WeeklyAvg),
@@ -235,7 +235,7 @@ func newTrainingHrvCmd(opts *globalOptions) *cobra.Command {
 					formatMaybeInt(r.LastNightAvg),
 				})
 			}
-			return renderTable(opts.Format, []string{"date", "status", "weekly_avg", "last_night_avg"}, rows)
+			return renderTableTo(cmd.OutOrStdout(), opts.Format, []string{"date", "status", "weekly_avg", "last_night_avg"}, rows)
 		},
 	}
 	cmd.Flags().StringVar(&date, "date", "", "Date (YYYY-MM-DD, default: today)")

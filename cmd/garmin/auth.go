@@ -112,7 +112,7 @@ func newAuthLoginCmd(opts *globalOptions) *cobra.Command {
 			}
 
 			if opts.Format == "json" {
-				return output.JSON(authLoginJSON{
+				return output.JSONTo(cmd.OutOrStdout(), authLoginJSON{
 					Authenticated: true,
 					Profile:       orDefault(opts.Profile, "default"),
 					ExpiresAt:     session.OAuth2.ExpiresAt,
@@ -120,7 +120,7 @@ func newAuthLoginCmd(opts *globalOptions) *cobra.Command {
 			}
 
 			exp := time.Unix(session.OAuth2.ExpiresAt, 0).Format(time.RFC3339)
-			return renderKV(opts.Format, "Authenticated", map[string]string{
+			return renderKVTo(cmd.OutOrStdout(), opts.Format, "Authenticated", map[string]string{
 				"profile":    orDefault(opts.Profile, "default"),
 				"expires_at": exp,
 			})
@@ -151,25 +151,25 @@ func newAuthStatusCmd(opts *globalOptions) *cobra.Command {
 			if err != nil {
 				if errors.Is(err, auth.ErrNotAuthenticated) {
 					if opts.Format == "json" {
-						return output.JSON(authStatusJSON{
+						return output.JSONTo(cmd.OutOrStdout(), authStatusJSON{
 							Authenticated: false,
 							Profile:       orDefault(opts.Profile, "default"),
 						})
 					}
-					return renderKV(opts.Format, "Authentication", map[string]string{
+					return renderKVTo(cmd.OutOrStdout(), opts.Format, "Authentication", map[string]string{
 						"status":  "not authenticated",
 						"message": "Run `garmin auth login`",
 						"profile": orDefault(opts.Profile, "default"),
 					})
 				}
 				if opts.Format == "json" {
-					return output.JSON(authStatusJSON{
+					return output.JSONTo(cmd.OutOrStdout(), authStatusJSON{
 						Authenticated: false,
 						Profile:       orDefault(opts.Profile, "default"),
 						Error:         err.Error(),
 					})
 				}
-				_ = renderKV(opts.Format, "Authentication", map[string]string{
+				_ = renderKVTo(cmd.OutOrStdout(), opts.Format, "Authentication", map[string]string{
 					"status":  "not authenticated",
 					"message": "Run `garmin auth login`",
 					"profile": orDefault(opts.Profile, "default"),
@@ -183,12 +183,12 @@ func newAuthStatusCmd(opts *globalOptions) *cobra.Command {
 				// If tokens are missing/invalid, treat as "not authenticated" (status command should be informational).
 				if errors.Is(err, auth.ErrNotAuthenticated) {
 					if opts.Format == "json" {
-						return output.JSON(authStatusJSON{
+						return output.JSONTo(cmd.OutOrStdout(), authStatusJSON{
 							Authenticated: false,
 							Profile:       orDefault(opts.Profile, "default"),
 						})
 					}
-					return renderKV(opts.Format, "Authentication", map[string]string{
+					return renderKVTo(cmd.OutOrStdout(), opts.Format, "Authentication", map[string]string{
 						"status":  "not authenticated",
 						"message": "Run `garmin auth login`",
 						"profile": orDefault(opts.Profile, "default"),
@@ -205,7 +205,7 @@ func newAuthStatusCmd(opts *globalOptions) *cobra.Command {
 			if opts.Format == "json" {
 				// Keep it intentionally small; don't emit tokens.
 				sess, _ := auth.LoadSession(cfgDir, opts.Profile)
-				return output.JSON(authStatusJSON{
+				return output.JSONTo(cmd.OutOrStdout(), authStatusJSON{
 					Authenticated: true,
 					Profile:       orDefault(opts.Profile, "default"),
 					DisplayName:   displayName,
@@ -215,7 +215,7 @@ func newAuthStatusCmd(opts *globalOptions) *cobra.Command {
 
 			sess, _ := auth.LoadSession(cfgDir, opts.Profile)
 			exp := time.Unix(sess.OAuth2.ExpiresAt, 0).Format(time.RFC3339)
-			return renderKV(opts.Format, "Authentication", map[string]string{
+			return renderKVTo(cmd.OutOrStdout(), opts.Format, "Authentication", map[string]string{
 				"status":       "authenticated",
 				"profile":      orDefault(opts.Profile, "default"),
 				"display_name": displayName,
@@ -239,12 +239,12 @@ func newAuthLogoutCmd(opts *globalOptions) *cobra.Command {
 				return err
 			}
 			if opts.Format == "json" {
-				return output.JSON(authLogoutJSON{
+				return output.JSONTo(cmd.OutOrStdout(), authLogoutJSON{
 					OK:      true,
 					Profile: orDefault(opts.Profile, "default"),
 				})
 			}
-			return renderKV(opts.Format, "Logged out", map[string]string{
+			return renderKVTo(cmd.OutOrStdout(), opts.Format, "Logged out", map[string]string{
 				"profile": orDefault(opts.Profile, "default"),
 			})
 		},

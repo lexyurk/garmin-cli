@@ -46,11 +46,11 @@ func newActivitiesListCmd(opts *globalOptions) *cobra.Command {
 			ctx := cmd.Context()
 			out, err := garminactivities.List(ctx, c, limit, after, before, activityType)
 			if err != nil {
-				return handleAuthedError(opts, err)
+				return handleAuthedErrorTo(cmd.ErrOrStderr(), opts, err)
 			}
 
 			if opts.Format == "json" {
-				return output.JSON(out)
+				return output.JSONTo(cmd.OutOrStdout(), out)
 			}
 
 			rows := make([][]string, 0, len(out))
@@ -67,7 +67,7 @@ func newActivitiesListCmd(opts *globalOptions) *cobra.Command {
 				})
 			}
 
-			return renderTable(opts.Format, []string{"id", "start", "type", "name", "dist_km", "duration", "kcal", "avg_hr"}, rows)
+			return renderTableTo(cmd.OutOrStdout(), opts.Format, []string{"id", "start", "type", "name", "dist_km", "duration", "kcal", "avg_hr"}, rows)
 		},
 	}
 
@@ -101,11 +101,11 @@ func newActivitiesGetCmd(opts *globalOptions) *cobra.Command {
 
 			raw, err := garminactivities.GetRaw(ctx, c, id)
 			if err != nil {
-				return handleAuthedError(opts, err)
+				return handleAuthedErrorTo(cmd.ErrOrStderr(), opts, err)
 			}
 
 			if opts.Format == "json" {
-				return output.JSON(raw)
+				return output.JSONTo(cmd.OutOrStdout(), raw)
 			}
 
 			s := garminactivities.SummarizeDetail(id, raw)
@@ -127,7 +127,7 @@ func newActivitiesGetCmd(opts *globalOptions) *cobra.Command {
 				fields["training_load"] = formatMaybeFloat0(s.TrainingLoad, 0)
 			}
 
-			return renderKV(opts.Format, "Activity", fields)
+			return renderKVTo(cmd.OutOrStdout(), opts.Format, "Activity", fields)
 		},
 	}
 
@@ -154,11 +154,11 @@ func newActivitiesSplitsCmd(opts *globalOptions) *cobra.Command {
 			ctx := cmd.Context()
 			raw, err := garminactivities.GetRaw(ctx, c, id)
 			if err != nil {
-				return handleAuthedError(opts, err)
+				return handleAuthedErrorTo(cmd.ErrOrStderr(), opts, err)
 			}
 
 			if opts.Format == "json" {
-				return output.JSON(activitiesSplitsJSON{
+				return output.JSONTo(cmd.OutOrStdout(), activitiesSplitsJSON{
 					ActivityID: id,
 					Splits:     raw["splitSummaries"],
 				})
@@ -178,13 +178,13 @@ func newActivitiesSplitsCmd(opts *globalOptions) *cobra.Command {
 			}
 
 			if len(rows) == 0 {
-				return renderKV(opts.Format, "Splits", map[string]string{
+				return renderKVTo(cmd.OutOrStdout(), opts.Format, "Splits", map[string]string{
 					"activity_id": fmt.Sprintf("%d", id),
 					"message":     "No splits available",
 				})
 			}
 
-			return renderTable(opts.Format, []string{"split", "dist_km", "duration", "pace_min_per_km", "avg_hr", "max_hr"}, rows)
+			return renderTableTo(cmd.OutOrStdout(), opts.Format, []string{"split", "dist_km", "duration", "pace_min_per_km", "avg_hr", "max_hr"}, rows)
 		},
 	}
 	return cmd

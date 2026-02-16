@@ -59,16 +59,16 @@ func newHealthSleepCmd(opts *globalOptions) *cobra.Command {
 				return garminhealth.GetSleep(ctx, c, date)
 			})
 			if err != nil {
-				return handleAuthedError(opts, err)
+				return handleAuthedErrorTo(cmd.ErrOrStderr(), opts, err)
 			}
 
 			if opts.Format == "json" {
-				return output.JSON(results)
+				return output.JSONTo(cmd.OutOrStdout(), results)
 			}
 
 			if len(results) == 1 {
 				r := results[0]
-				return renderKV(opts.Format, "Sleep", map[string]string{
+				return renderKVTo(cmd.OutOrStdout(), opts.Format, "Sleep", map[string]string{
 					"date":       r.Date,
 					"score":      formatMaybeInt(r.Score),
 					"total":      formatDurationSeconds(r.TotalSleepSeconds),
@@ -93,7 +93,8 @@ func newHealthSleepCmd(opts *globalOptions) *cobra.Command {
 					formatDurationSeconds(r.AwakeSeconds),
 				})
 			}
-			return renderTable(
+			return renderTableTo(
+				cmd.OutOrStdout(),
 				opts.Format,
 				[]string{"date", "score", "total", "deep", "light", "rem", "awake"},
 				rows,
@@ -133,7 +134,7 @@ func newHealthHeartRateCmd(opts *globalOptions) *cobra.Command {
 				return garminhealth.GetDailySummary(ctx, c, date)
 			})
 			if err != nil {
-				return handleAuthedError(opts, err)
+				return handleAuthedErrorTo(cmd.ErrOrStderr(), opts, err)
 			}
 			out := make([]heartRateSummary, 0, len(summaries))
 			for i, s := range summaries {
@@ -142,11 +143,11 @@ func newHealthHeartRateCmd(opts *globalOptions) *cobra.Command {
 			}
 
 			if opts.Format == "json" {
-				return output.JSON(out)
+				return output.JSONTo(cmd.OutOrStdout(), out)
 			}
 			if len(out) == 1 {
 				r := out[0]
-				return renderKV(opts.Format, "Heart rate", map[string]string{
+				return renderKVTo(cmd.OutOrStdout(), opts.Format, "Heart rate", map[string]string{
 					"date":        r.Date,
 					"resting_hr":  formatMaybeInt(r.RestingHR),
 					"min_hr":      formatMaybeInt(r.MinHR),
@@ -162,7 +163,7 @@ func newHealthHeartRateCmd(opts *globalOptions) *cobra.Command {
 					formatMaybeInt(r.MaxHR),
 				})
 			}
-			return renderTable(opts.Format, []string{"date", "resting_hr", "min_hr", "max_hr"}, rows)
+			return renderTableTo(cmd.OutOrStdout(), opts.Format, []string{"date", "resting_hr", "min_hr", "max_hr"}, rows)
 		},
 	}
 	cmd.Flags().StringVar(&date, "date", "", "Date (YYYY-MM-DD, default: today)")
@@ -196,7 +197,7 @@ func newHealthStepsCmd(opts *globalOptions) *cobra.Command {
 				return garminhealth.GetDailySummary(ctx, c, date)
 			})
 			if err != nil {
-				return handleAuthedError(opts, err)
+				return handleAuthedErrorTo(cmd.ErrOrStderr(), opts, err)
 			}
 			out := make([]stepsSummary, 0, len(summaries))
 			for i, s := range summaries {
@@ -205,11 +206,11 @@ func newHealthStepsCmd(opts *globalOptions) *cobra.Command {
 			}
 
 			if opts.Format == "json" {
-				return output.JSON(out)
+				return output.JSONTo(cmd.OutOrStdout(), out)
 			}
 			if len(out) == 1 {
 				r := out[0]
-				return renderKV(opts.Format, "Steps", map[string]string{
+				return renderKVTo(cmd.OutOrStdout(), opts.Format, "Steps", map[string]string{
 					"date":     r.Date,
 					"steps":    formatMaybeInt(r.TotalSteps),
 					"goal":     formatMaybeInt(r.Goal),
@@ -225,7 +226,7 @@ func newHealthStepsCmd(opts *globalOptions) *cobra.Command {
 					formatMetersToKM(r.DistanceMeters),
 				})
 			}
-			return renderTable(opts.Format, []string{"date", "steps", "goal", "distance_km"}, rows)
+			return renderTableTo(cmd.OutOrStdout(), opts.Format, []string{"date", "steps", "goal", "distance_km"}, rows)
 		},
 	}
 	cmd.Flags().StringVar(&date, "date", "", "Date (YYYY-MM-DD, default: today)")
@@ -259,7 +260,7 @@ func newHealthStressCmd(opts *globalOptions) *cobra.Command {
 				return garminhealth.GetDailySummary(ctx, c, date)
 			})
 			if err != nil {
-				return handleAuthedError(opts, err)
+				return handleAuthedErrorTo(cmd.ErrOrStderr(), opts, err)
 			}
 			out := make([]stressSummary, 0, len(summaries))
 			for i, s := range summaries {
@@ -268,11 +269,11 @@ func newHealthStressCmd(opts *globalOptions) *cobra.Command {
 			}
 
 			if opts.Format == "json" {
-				return output.JSON(out)
+				return output.JSONTo(cmd.OutOrStdout(), out)
 			}
 			if len(out) == 1 {
 				r := out[0]
-				return renderKV(opts.Format, "Stress", map[string]string{
+				return renderKVTo(cmd.OutOrStdout(), opts.Format, "Stress", map[string]string{
 					"date":      r.Date,
 					"average":   formatMaybeInt(r.Average),
 					"max":       formatMaybeInt(r.Max),
@@ -288,7 +289,7 @@ func newHealthStressCmd(opts *globalOptions) *cobra.Command {
 					orDash(r.Qualifier),
 				})
 			}
-			return renderTable(opts.Format, []string{"date", "avg", "max", "qualifier"}, rows)
+			return renderTableTo(cmd.OutOrStdout(), opts.Format, []string{"date", "avg", "max", "qualifier"}, rows)
 		},
 	}
 	cmd.Flags().StringVar(&date, "date", "", "Date (YYYY-MM-DD, default: today)")
@@ -322,7 +323,7 @@ func newHealthBodyBatteryCmd(opts *globalOptions) *cobra.Command {
 				return garminhealth.GetDailySummary(ctx, c, date)
 			})
 			if err != nil {
-				return handleAuthedError(opts, err)
+				return handleAuthedErrorTo(cmd.ErrOrStderr(), opts, err)
 			}
 			out := make([]bodyBatterySummary, 0, len(summaries))
 			for i, s := range summaries {
@@ -338,11 +339,11 @@ func newHealthBodyBatteryCmd(opts *globalOptions) *cobra.Command {
 			}
 
 			if opts.Format == "json" {
-				return output.JSON(out)
+				return output.JSONTo(cmd.OutOrStdout(), out)
 			}
 			if len(out) == 1 {
 				r := out[0]
-				return renderKV(opts.Format, "Body battery", map[string]string{
+				return renderKVTo(cmd.OutOrStdout(), opts.Format, "Body battery", map[string]string{
 					"date":       r.Date,
 					"highest":    formatMaybeInt(r.Highest),
 					"lowest":     formatMaybeInt(r.Lowest),
@@ -360,7 +361,7 @@ func newHealthBodyBatteryCmd(opts *globalOptions) *cobra.Command {
 					formatMaybeInt(r.MostRecent),
 				})
 			}
-			return renderTable(opts.Format, []string{"date", "high", "low", "most_recent"}, rows)
+			return renderTableTo(cmd.OutOrStdout(), opts.Format, []string{"date", "high", "low", "most_recent"}, rows)
 		},
 	}
 	cmd.Flags().StringVar(&date, "date", "", "Date (YYYY-MM-DD, default: today)")

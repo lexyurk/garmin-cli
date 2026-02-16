@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"os"
 
 	"github.com/lexyurk/garmin-cli/internal/auth"
 	"github.com/lexyurk/garmin-cli/internal/client"
@@ -25,19 +24,19 @@ func newAuthedClient(cmd *cobra.Command, opts *globalOptions) (*client.Client, e
 		return c, nil
 	}
 	if errors.Is(err, auth.ErrNotAuthenticated) {
-		_ = renderNotAuthenticatedTo(os.Stderr, opts.Format, opts.Profile)
+		_ = renderNotAuthenticatedTo(cmd.ErrOrStderr(), opts.Format, opts.Profile)
 		return nil, renderedError(err)
 	}
 
 	return nil, fmt.Errorf("init client: %w", err)
 }
 
-func handleAuthedError(opts *globalOptions, err error) error {
+func handleAuthedErrorTo(w io.Writer, opts *globalOptions, err error) error {
 	if err == nil {
 		return nil
 	}
 	if errors.Is(err, auth.ErrNotAuthenticated) {
-		_ = renderNotAuthenticatedTo(os.Stderr, opts.Format, opts.Profile)
+		_ = renderNotAuthenticatedTo(w, opts.Format, opts.Profile)
 		return renderedError(err)
 	}
 	return err
