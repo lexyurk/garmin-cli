@@ -14,6 +14,7 @@ import (
 	"github.com/lexyurk/garmin-cli/internal/config"
 	"github.com/lexyurk/garmin-cli/internal/output"
 	"github.com/spf13/cobra"
+	"golang.org/x/term"
 )
 
 func NewAuthCmd(opts *globalOptions) *cobra.Command {
@@ -55,6 +56,19 @@ func newAuthLoginCmd(opts *globalOptions) *cobra.Command {
 				password = strings.TrimSpace(string(b))
 			} else if password == "" {
 				password = os.Getenv("GARMIN_PASSWORD")
+			}
+			if !passwordStdin && password == "" {
+				// Try to prompt interactively (avoids leaking password via process args).
+				if tty, err := os.Open("/dev/tty"); err == nil {
+					defer tty.Close()
+					fmt.Fprint(os.Stderr, "Password: ")
+					b, err := term.ReadPassword(int(tty.Fd()))
+					fmt.Fprintln(os.Stderr)
+					if err != nil {
+						return err
+					}
+					password = strings.TrimSpace(string(b))
+				}
 			}
 			if email == "" || password == "" {
 				return fmt.Errorf("missing credentials: provide --email/--password, --password-stdin, or set GARMIN_EMAIL/GARMIN_PASSWORD")
