@@ -2,6 +2,7 @@ package config
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"io/fs"
 	"os"
@@ -15,6 +16,8 @@ const (
 )
 
 var profileSanitizer = regexp.MustCompile(`[^a-zA-Z0-9._-]+`)
+
+var ErrInvalidProfileName = errors.New("invalid profile name")
 
 func ResolveConfigDir(flagValue string) (string, error) {
 	if flagValue != "" {
@@ -124,14 +127,42 @@ func cleanPath(p string) (string, error) {
 	return p, nil
 }
 
+// ValidateProfile checks whether a user-provided profile name is safe to use as a directory name.
+//
+// Note: profile names are *sanitized* (see sanitizeProfile) before being used in paths. This
+// validation only rejects names that would resolve to "." or ".." (which could otherwise make
+// filepath.Join escape the intended directory).
+func ValidateProfile(profile string) error {
+	profile = strings.TrimSpace(profile)
+	if profile == "" {
+		return nil
+	}
+
+	base := filepath.Base(profile)
+	// filepath.Base returns "." for "" and "."; for non-empty input we only care about "." / "..".
+	if base == "." || base == ".." {
+		return fmt.Errorf("%w: %q (resolves to %q)", ErrInvalidProfileName, profile, base)
+	}
+
+	// Defense-in-depth: reject if sanitization yields dot segments (should be impossible unless base is).
+	sanitized := profileSanitizer.ReplaceAllString(base, "-")
+	if sanitized == "." || sanitized == ".." || sanitized == "" {
+		return fmt.Errorf("%w: %q (resolves to %q)", ErrInvalidProfileName, profile, sanitized)
+	}
+	return nil
+}
+
 func sanitizeProfile(profile string) string {
 	profile = strings.TrimSpace(profile)
 	if profile == "" {
 		return "default"
 	}
 	profile = filepath.Base(profile) // prevent path traversal / separators
+	if profile == "." || profile == ".." {
+		return "default"
+	}
 	profile = profileSanitizer.ReplaceAllString(profile, "-")
-	if profile == "" {
+	if profile == "" || profile == "." || profile == ".." {
 		return "default"
 	}
 	return profile

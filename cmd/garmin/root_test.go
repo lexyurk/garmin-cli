@@ -240,3 +240,40 @@ func TestRoot_HelpCmdWorksWithBrokenConfig(t *testing.T) {
 		t.Fatalf("expected root help output, got:\n%s", out.String())
 	}
 }
+
+func TestRoot_InvalidProfileFlagRejected(t *testing.T) {
+	dir := t.TempDir()
+
+	cmd := NewRootCmd("dev")
+	var out bytes.Buffer
+	cmd.SetOut(&out)
+	cmd.SetErr(&out)
+	cmd.SetArgs([]string{"--config-dir", dir, "--profile", "..", "auth", "status"})
+
+	err := cmd.Execute()
+	if err == nil {
+		t.Fatalf("expected error")
+	}
+	if !strings.Contains(err.Error(), "invalid profile name") {
+		t.Fatalf("expected invalid profile error, got: %v", err)
+	}
+}
+
+func TestRoot_InvalidProfileEnvRejected(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("GARMIN_PROFILE", "..")
+
+	cmd := NewRootCmd("dev")
+	var out bytes.Buffer
+	cmd.SetOut(&out)
+	cmd.SetErr(&out)
+	cmd.SetArgs([]string{"--config-dir", dir, "auth", "status"})
+
+	err := cmd.Execute()
+	if err == nil {
+		t.Fatalf("expected error")
+	}
+	if !strings.Contains(err.Error(), "invalid profile name") {
+		t.Fatalf("expected invalid profile error, got: %v", err)
+	}
+}

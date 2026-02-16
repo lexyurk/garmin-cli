@@ -4,7 +4,10 @@ package auth
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/lexyurk/garmin-cli/internal/config"
 )
@@ -36,6 +39,10 @@ func RefreshOAuth2(ctx context.Context, configDir string, oauth1 OAuth1Token) (O
 }
 
 func LoadSession(configDir, profile string) (*Session, error) {
+	if err := config.ValidateProfile(profile); err != nil {
+		return nil, err
+	}
+
 	oauth1Path := config.OAuth1TokenPath(configDir, profile)
 	oauth2Path := config.OAuth2TokenPath(configDir, profile)
 
@@ -58,6 +65,10 @@ func LoadSession(configDir, profile string) (*Session, error) {
 }
 
 func SaveSession(configDir, profile string, s *Session) error {
+	if err := config.ValidateProfile(profile); err != nil {
+		return err
+	}
+
 	oauth1Path := config.OAuth1TokenPath(configDir, profile)
 	oauth2Path := config.OAuth2TokenPath(configDir, profile)
 	if err := saveJSON(oauth1Path, s.OAuth1, 0o600); err != nil {
@@ -70,6 +81,31 @@ func SaveSession(configDir, profile string, s *Session) error {
 }
 
 func Logout(configDir, profile string) error {
+	if err := config.ValidateProfile(profile); err != nil {
+		return err
+	}
+
+	tokensRoot := filepath.Clean(filepath.Join(configDir, "tokens"))
 	dir := config.TokensDir(configDir, profile)
+	dir = filepath.Clean(dir)
+	configDir = filepath.Clean(configDir)
+
+	// Defense-in-depth: even if TokensDir changes, never let logout delete the whole config dir
+	// (or the shared tokens root).
+	if dir == configDir || dir == tokensRoot {
+		return fmt.Errorf("refusing to remove unsafe tokens directory %q", dir)
+	}
+	rel, err := filepath.Rel(tokensRoot, dir)
+	if err != nil {
+		return fmt.Errorf("validate tokens directory: %w", err)
+	}
+	if rel == "." || rel == ".." || strings.HasPrefix(rel, ".."+string(os.PathSeparator)) {
+		return fmt.Errorf("refusing to remove unsafe tokens directory %q", dir)
+	}
+	// Only allow deleting a single profile directory directly under tokensRoot.
+	if strings.Contains(rel, string(os.PathSeparator)) {
+		return fmt.Errorf("refusing to remove nested tokens directory %q", dir)
+	}
+
 	return os.RemoveAll(dir)
 }

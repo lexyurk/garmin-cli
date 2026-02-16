@@ -94,6 +94,10 @@ func NewRootCmd(version string) *cobra.Command {
 			default:
 				return fmt.Errorf("unsupported --format %q (supported: markdown, table, human, json)", opts.Format)
 			}
+
+			if err := config.ValidateProfile(opts.Profile); err != nil {
+				return err
+			}
 			return nil
 		},
 	}
