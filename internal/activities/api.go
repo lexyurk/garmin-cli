@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/lexyurk/garmin-cli/internal/client"
 )
@@ -39,6 +40,24 @@ type Summary struct {
 func List(ctx context.Context, c *client.Client, limit int, after, before, activityType string) ([]Summary, error) {
 	if limit <= 0 {
 		return nil, fmt.Errorf("limit must be > 0")
+	}
+
+	if after != "" {
+		d, err := parseDate(after)
+		if err != nil {
+			return nil, err
+		}
+		after = d
+	}
+	if before != "" {
+		d, err := parseDate(before)
+		if err != nil {
+			return nil, err
+		}
+		before = d
+	}
+	if after != "" && before != "" && before < after {
+		return nil, fmt.Errorf("--before (%s) is before --after (%s)", before, after)
 	}
 
 	var out []Summary
@@ -131,5 +150,13 @@ func passesFilters(a Summary, after, before, activityType string) bool {
 		}
 	}
 	return true
+}
+
+func parseDate(s string) (string, error) {
+	t, err := time.ParseInLocation("2006-01-02", s, time.Local)
+	if err != nil {
+		return "", fmt.Errorf("invalid date %q (expected YYYY-MM-DD)", s)
+	}
+	return t.Format("2006-01-02"), nil
 }
 
