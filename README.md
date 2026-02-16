@@ -135,6 +135,14 @@ Tokens stored in:
 ~/.config/garmin/tokens/<profile>/oauth2_token.json
 ```
 
+### Environment variables
+
+| Variable | Description |
+|----------|-------------|
+| `GARMIN_CONFIG_DIR` | Overrides config directory (same as `--config-dir`) |
+| `GARMIN_PROFILE` | Default profile (overridden by `--profile`) |
+| `GARMIN_FORMAT` | Default output format (overridden by `--format`) |
+
 ## Authentication notes (SSO, MFA)
 
 - `garmin auth login` uses Garmin SSO to obtain OAuth tokens for `connectapi.garmin.com`.

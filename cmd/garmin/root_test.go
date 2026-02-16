@@ -31,6 +31,31 @@ func TestRoot_ConfigTomlDefaultsApplied(t *testing.T) {
 	}
 }
 
+func TestRoot_ConfigDirFromEnv(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "config.toml"), []byte("format = \"json\"\nprofile = \"work\"\n"), 0o600); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+
+	t.Setenv("GARMIN_CONFIG_DIR", dir)
+
+	cmd := NewRootCmd("dev")
+	var out bytes.Buffer
+	cmd.SetOut(&out)
+	cmd.SetErr(&out)
+	cmd.SetArgs([]string{"auth", "status"})
+
+	_ = cmd.Execute()
+
+	got := out.String()
+	if !strings.Contains(got, "\"authenticated\": false") {
+		t.Fatalf("expected json output, got:\n%s", got)
+	}
+	if !strings.Contains(got, "\"profile\": \"work\"") {
+		t.Fatalf("expected profile from config, got:\n%s", got)
+	}
+}
+
 func TestRoot_EnvOverridesConfig(t *testing.T) {
 	dir := t.TempDir()
 	if err := os.WriteFile(filepath.Join(dir, "config.toml"), []byte("format = \"markdown\"\nprofile = \"work\"\n"), 0o600); err != nil {
