@@ -29,7 +29,7 @@ func NewRootCmd(version string) *cobra.Command {
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			// Meta commands should always work, even with broken config.
 			switch cmd.Name() {
-			case "completion", "version":
+			case "completion", "help", "version":
 				return nil
 			}
 

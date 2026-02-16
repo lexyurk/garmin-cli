@@ -116,3 +116,23 @@ func TestRoot_VersionWorksWithBrokenConfig(t *testing.T) {
 		t.Fatalf("expected version output, got:\n%s", out.String())
 	}
 }
+
+func TestRoot_HelpCmdWorksWithBrokenConfig(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "config.toml"), []byte("this is not valid toml\n"), 0o600); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+
+	cmd := NewRootCmd("dev")
+	var out bytes.Buffer
+	cmd.SetOut(&out)
+	cmd.SetErr(&out)
+	cmd.SetArgs([]string{"--config-dir", dir, "help"})
+
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("expected help to work with broken config, got: %v\noutput:\n%s", err, out.String())
+	}
+	if !strings.Contains(out.String(), "Fast, ergonomic Garmin Connect CLI") {
+		t.Fatalf("expected root help output, got:\n%s", out.String())
+	}
+}
