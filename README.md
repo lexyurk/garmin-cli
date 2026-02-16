@@ -176,16 +176,6 @@ garmin auth logout
 garmin auth login
 ```
 
-### Environment Variables
-
-| Variable          | Description             |
-|-------------------|-------------------------|
-| `GARMIN_EMAIL`    | Garmin Connect email    |
-| `GARMIN_PASSWORD` | Garmin Connect password |
-| `GARMIN_FORMAT`   | Default output format   |
-| `GARMIN_PROFILE`  | Default profile name    |
-| `GARMIN_CONFIG_DIR` | Override config directory |
-
 ## Development
 
 ```bash
