@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"strconv"
 	"time"
@@ -51,7 +50,7 @@ func newActivitiesListCmd(opts *globalOptions) *cobra.Command {
 				return err
 			}
 
-			ctx := context.Background()
+			ctx := cmd.Context()
 			out, err := garminactivities.List(ctx, c, limit, after, before, activityType)
 			if err != nil {
 				return err
@@ -112,7 +111,7 @@ func newActivitiesGetCmd(opts *globalOptions) *cobra.Command {
 				return err
 			}
 
-			ctx := context.Background()
+			ctx := cmd.Context()
 
 			raw, err := garminactivities.GetRaw(ctx, c, id)
 			if err != nil {
@@ -170,7 +169,7 @@ func newActivitiesSplitsCmd(opts *globalOptions) *cobra.Command {
 				return err
 			}
 
-			ctx := context.Background()
+			ctx := cmd.Context()
 			raw, err := garminactivities.GetRaw(ctx, c, id)
 			if err != nil {
 				return err

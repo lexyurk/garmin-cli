@@ -53,7 +53,7 @@ func newTrainingStatusCmd(opts *globalOptions) *cobra.Command {
 				return err
 			}
 
-			ctx := context.Background()
+			ctx := cmd.Context()
 			results, err := mapDatesConcurrently(ctx, dates, 4, func(ctx context.Context, date string) (garmintraining.StatusSummary, error) {
 				return garmintraining.GetStatus(ctx, c, date)
 			})
@@ -118,7 +118,7 @@ func newTrainingReadinessCmd(opts *globalOptions) *cobra.Command {
 				return err
 			}
 
-			ctx := context.Background()
+			ctx := cmd.Context()
 			results, err := mapDatesConcurrently(ctx, dates, 4, func(ctx context.Context, date string) (garmintraining.ReadinessSummary, error) {
 				return garmintraining.GetReadiness(ctx, c, date)
 			})
@@ -184,7 +184,7 @@ func newTrainingVo2maxCmd(opts *globalOptions) *cobra.Command {
 				return err
 			}
 
-			ctx := context.Background()
+			ctx := cmd.Context()
 			vo2, err := garmintraining.GetVO2Max(ctx, c)
 			if err != nil {
 				return err
@@ -231,7 +231,7 @@ func newTrainingHrvCmd(opts *globalOptions) *cobra.Command {
 				return err
 			}
 
-			ctx := context.Background()
+			ctx := cmd.Context()
 			results, err := mapDatesConcurrently(ctx, dates, 4, func(ctx context.Context, date string) (garmintraining.HRVSummary, error) {
 				return garmintraining.GetHRV(ctx, c, date)
 			})

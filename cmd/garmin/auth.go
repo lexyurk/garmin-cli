@@ -2,7 +2,6 @@ package main
 
 import (
 	"bufio"
-	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -55,7 +54,7 @@ func newAuthLoginCmd(opts *globalOptions) *cobra.Command {
 				return err
 			}
 
-			ctx := context.Background()
+			ctx := cmd.Context()
 			prompt := func() (string, error) {
 				if mfaCode != "" {
 					return mfaCode, nil
@@ -110,7 +109,7 @@ func newAuthStatusCmd(opts *globalOptions) *cobra.Command {
 			}
 
 			// Lightweight verified call (also refreshes OAuth2 if needed).
-			ctx := context.Background()
+			ctx := cmd.Context()
 			c, err := client.New(cfgDir, opts.Profile, client.Options{})
 			if err != nil {
 				if errors.Is(err, auth.ErrNotAuthenticated) {

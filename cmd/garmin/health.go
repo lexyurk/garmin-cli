@@ -61,7 +61,7 @@ func newHealthSleepCmd(opts *globalOptions) *cobra.Command {
 				return err
 			}
 
-			ctx := context.Background()
+			ctx := cmd.Context()
 			results, err := mapDatesConcurrently(ctx, dates, 4, func(ctx context.Context, date string) (garminhealth.SleepSummary, error) {
 				return garminhealth.GetSleep(ctx, c, date)
 			})
@@ -138,7 +138,7 @@ func newHealthHeartRateCmd(opts *globalOptions) *cobra.Command {
 				return err
 			}
 
-			ctx := context.Background()
+			ctx := cmd.Context()
 			summaries, err := mapDatesConcurrently(ctx, dates, 4, func(ctx context.Context, date string) (garminhealth.DailySummary, error) {
 				return garminhealth.GetDailySummary(ctx, c, date)
 			})
@@ -205,7 +205,7 @@ func newHealthStepsCmd(opts *globalOptions) *cobra.Command {
 				return err
 			}
 
-			ctx := context.Background()
+			ctx := cmd.Context()
 			summaries, err := mapDatesConcurrently(ctx, dates, 4, func(ctx context.Context, date string) (garminhealth.DailySummary, error) {
 				return garminhealth.GetDailySummary(ctx, c, date)
 			})
@@ -272,7 +272,7 @@ func newHealthStressCmd(opts *globalOptions) *cobra.Command {
 				return err
 			}
 
-			ctx := context.Background()
+			ctx := cmd.Context()
 			summaries, err := mapDatesConcurrently(ctx, dates, 4, func(ctx context.Context, date string) (garminhealth.DailySummary, error) {
 				return garminhealth.GetDailySummary(ctx, c, date)
 			})
@@ -339,7 +339,7 @@ func newHealthBodyBatteryCmd(opts *globalOptions) *cobra.Command {
 				return err
 			}
 
-			ctx := context.Background()
+			ctx := cmd.Context()
 			summaries, err := mapDatesConcurrently(ctx, dates, 4, func(ctx context.Context, date string) (garminhealth.DailySummary, error) {
 				return garminhealth.GetDailySummary(ctx, c, date)
 			})
