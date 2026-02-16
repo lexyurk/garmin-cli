@@ -39,14 +39,17 @@ func NewRootCmd(version string) *cobra.Command {
 			}
 
 			opts.Format = normalizeFormat(opts.Format)
-			if opts.Format != "markdown" && opts.Format != "json" {
-				return fmt.Errorf("unsupported --format %q (supported: markdown, json)", opts.Format)
+			switch opts.Format {
+			case "markdown", "json", "table", "human":
+				// ok
+			default:
+				return fmt.Errorf("unsupported --format %q (supported: markdown, table, human, json)", opts.Format)
 			}
 			return nil
 		},
 	}
 
-	cmd.PersistentFlags().StringVarP(&opts.Format, "format", "f", "markdown", "Output format: markdown, json")
+	cmd.PersistentFlags().StringVarP(&opts.Format, "format", "f", "markdown", "Output format: markdown, table, human, json")
 	cmd.PersistentFlags().BoolVarP(&opts.Verbose, "verbose", "v", false, "Verbose output")
 	cmd.PersistentFlags().BoolVarP(&opts.Quiet, "quiet", "q", false, "Suppress non-essential output")
 	cmd.PersistentFlags().StringVarP(&opts.ConfigDir, "config-dir", "c", "", "Config directory (default: ~/.config/garmin)")
@@ -70,6 +73,10 @@ func normalizeFormat(s string) string {
 	switch s {
 	case "", "markdown", "md":
 		return "markdown"
+	case "table", "tbl":
+		return "table"
+	case "human":
+		return "human"
 	case "json":
 		return "json"
 	default:

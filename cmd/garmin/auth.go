@@ -84,7 +84,7 @@ func newAuthLoginCmd(opts *globalOptions) *cobra.Command {
 			}
 
 			exp := time.Unix(session.OAuth2.ExpiresAt, 0).Format(time.RFC3339)
-			return output.MarkdownKV("Authenticated", map[string]string{
+			return renderKV(opts.Format, "Authenticated", map[string]string{
 				"profile":    orDefault(opts.Profile, "default"),
 				"expires_at": exp,
 			})
@@ -119,7 +119,7 @@ func newAuthStatusCmd(opts *globalOptions) *cobra.Command {
 							"profile":       opts.Profile,
 						})
 					}
-					return output.MarkdownKV("Authentication", map[string]string{
+					return renderKV(opts.Format, "Authentication", map[string]string{
 						"status":  "not authenticated",
 						"message": "Run `garmin auth login`",
 						"profile": orDefault(opts.Profile, "default"),
@@ -132,7 +132,7 @@ func newAuthStatusCmd(opts *globalOptions) *cobra.Command {
 						"profile":       opts.Profile,
 					})
 				}
-				_ = output.MarkdownKV("Authentication", map[string]string{
+				_ = renderKV(opts.Format, "Authentication", map[string]string{
 					"status":  "not authenticated",
 					"message": "Run `garmin auth login`",
 					"profile": orDefault(opts.Profile, "default"),
@@ -164,7 +164,7 @@ func newAuthStatusCmd(opts *globalOptions) *cobra.Command {
 
 			sess, _ := auth.LoadSession(cfgDir, opts.Profile)
 			exp := time.Unix(sess.OAuth2.ExpiresAt, 0).Format(time.RFC3339)
-			return output.MarkdownKV("Authentication", map[string]string{
+			return renderKV(opts.Format, "Authentication", map[string]string{
 				"status":       "authenticated",
 				"profile":      orDefault(opts.Profile, "default"),
 				"display_name": displayName,
@@ -193,7 +193,7 @@ func newAuthLogoutCmd(opts *globalOptions) *cobra.Command {
 					"profile": opts.Profile,
 				})
 			}
-			return output.MarkdownKV("Logged out", map[string]string{
+			return renderKV(opts.Format, "Logged out", map[string]string{
 				"profile": orDefault(opts.Profile, "default"),
 			})
 		},

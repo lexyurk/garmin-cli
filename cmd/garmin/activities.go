@@ -74,10 +74,7 @@ func newActivitiesListCmd(opts *globalOptions) *cobra.Command {
 				})
 			}
 
-			return output.MarkdownTable(
-				[]string{"id", "date", "type", "name", "dist_km", "duration", "kcal", "avg_hr"},
-				rows,
-			)
+			return renderTable(opts.Format, []string{"id", "date", "type", "name", "dist_km", "duration", "kcal", "avg_hr"}, rows)
 		},
 	}
 
@@ -141,7 +138,7 @@ func newActivitiesGetCmd(opts *globalOptions) *cobra.Command {
 				fields["training_load"] = formatMaybeFloat0(s.TrainingLoad, 0)
 			}
 
-			return output.MarkdownKV("Activity", fields)
+			return renderKV(opts.Format, "Activity", fields)
 		},
 	}
 
@@ -193,16 +190,13 @@ func newActivitiesSplitsCmd(opts *globalOptions) *cobra.Command {
 			}
 
 			if len(rows) == 0 {
-				return output.MarkdownKV("Splits", map[string]string{
+				return renderKV(opts.Format, "Splits", map[string]string{
 					"activity_id": fmt.Sprintf("%d", id),
 					"message":     "No splits available",
 				})
 			}
 
-			return output.MarkdownTable(
-				[]string{"split", "dist_km", "duration", "pace_min_per_km", "avg_hr", "max_hr"},
-				rows,
-			)
+			return renderTable(opts.Format, []string{"split", "dist_km", "duration", "pace_min_per_km", "avg_hr", "max_hr"}, rows)
 		},
 	}
 	return cmd

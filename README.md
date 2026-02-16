@@ -68,7 +68,7 @@ garmin activities list --after 2026-01-01 --before 2026-02-01 --limit 50
 
 | Flag        | Short | Description                              |
 |-------------|-------|------------------------------------------|
-| `--format`  | `-f`  | Output format: markdown, json            |
+| `--format`  | `-f`  | Output format: markdown, table, human, json |
 | `--verbose` | `-v`  | Verbose output                           |
 | `--quiet`   | `-q`  | Suppress non-essential output            |
 | `--config-dir` | `-c` | Config directory (tokens, settings)   |
