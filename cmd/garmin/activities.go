@@ -57,7 +57,7 @@ func newActivitiesListCmd(opts *globalOptions) *cobra.Command {
 			for _, a := range out {
 				rows = append(rows, []string{
 					fmt.Sprintf("%d", a.ID),
-					a.Date,
+					a.StartTimeLocal,
 					a.Type,
 					a.Name,
 					formatDistanceKM(a.DistanceMeters),
@@ -67,7 +67,7 @@ func newActivitiesListCmd(opts *globalOptions) *cobra.Command {
 				})
 			}
 
-			return renderTable(opts.Format, []string{"id", "date", "type", "name", "dist_km", "duration", "kcal", "avg_hr"}, rows)
+			return renderTable(opts.Format, []string{"id", "start", "type", "name", "dist_km", "duration", "kcal", "avg_hr"}, rows)
 		},
 	}
 

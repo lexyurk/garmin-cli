@@ -29,6 +29,7 @@ type ListItem struct {
 type Summary struct {
 	ID              int64   `json:"id"`
 	Date            string  `json:"date"`
+	StartTimeLocal  string  `json:"start_time_local,omitempty"`
 	Type            string  `json:"type"`
 	Name            string  `json:"name"`
 	DistanceMeters   float64 `json:"distance_meters"`
@@ -126,6 +127,7 @@ func (a ListItem) ToSummary() Summary {
 	return Summary{
 		ID:             a.ActivityID,
 		Date:           a.startDate(),
+		StartTimeLocal: a.StartTimeLocal,
 		Type:           a.ActivityType.TypeKey,
 		Name:           a.ActivityName,
 		DistanceMeters:  a.Distance,
