@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -112,6 +113,19 @@ func newAuthStatusCmd(opts *globalOptions) *cobra.Command {
 			ctx := context.Background()
 			c, err := client.New(cfgDir, opts.Profile, client.Options{})
 			if err != nil {
+				if errors.Is(err, auth.ErrNotAuthenticated) {
+					if opts.Format == "json" {
+						return output.JSON(map[string]any{
+							"authenticated": false,
+							"profile":       opts.Profile,
+						})
+					}
+					return output.MarkdownKV("Authentication", map[string]string{
+						"status":  "not authenticated",
+						"message": "Run `garmin auth login`",
+						"profile": orDefault(opts.Profile, "default"),
+					})
+				}
 				if opts.Format == "json" {
 					return output.JSON(map[string]any{
 						"authenticated": false,
