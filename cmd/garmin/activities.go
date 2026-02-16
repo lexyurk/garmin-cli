@@ -198,9 +198,67 @@ func newActivitiesSplitsCmd(opts *globalOptions) *cobra.Command {
 		Short: "Get activity splits/laps",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			_ = opts
-			fmt.Printf("TODO: garmin activities splits %s\n", args[0])
-			return nil
+			id, err := strconv.ParseInt(args[0], 10, 64)
+			if err != nil {
+				return fmt.Errorf("invalid activity id %q", args[0])
+			}
+
+			cfgDir, err := config.ResolveConfigDir(opts.ConfigDir)
+			if err != nil {
+				return err
+			}
+			c, err := client.New(cfgDir, opts.Profile, client.Options{})
+			if err != nil {
+				return err
+			}
+
+			ctx := context.Background()
+			var raw map[string]any
+			if err := c.GetJSON(ctx, fmt.Sprintf("/activity-service/activity/%d", id), nil, &raw); err != nil {
+				return err
+			}
+
+			splitsAny, ok := raw["splitSummaries"].([]any)
+			if !ok {
+				splitsAny = []any{}
+			}
+
+			if opts.Format == "json" {
+				return output.JSON(map[string]any{
+					"activity_id": id,
+					"splits":      splitsAny,
+				})
+			}
+
+			rows := make([][]string, 0, len(splitsAny))
+			for i, item := range splitsAny {
+				m, _ := item.(map[string]any)
+				dist := floatFromAny(m["distance"])
+				dur := floatFromAny(m["duration"])
+				avgHR := intFromAny(m["averageHR"])
+				maxHR := intFromAny(m["maxHR"])
+
+				rows = append(rows, []string{
+					fmt.Sprintf("%d", i+1),
+					formatDistanceKM(dist),
+					formatDurationSecondsFloat(dur),
+					formatPaceMinPerKM(dist, dur),
+					formatMaybeInt0(avgHR),
+					formatMaybeInt0(maxHR),
+				})
+			}
+
+			if len(rows) == 0 {
+				return output.MarkdownKV("Splits", map[string]string{
+					"activity_id": fmt.Sprintf("%d", id),
+					"message":     "No splits available",
+				})
+			}
+
+			return output.MarkdownTable(
+				[]string{"split", "dist_km", "duration", "pace_min_per_km", "avg_hr", "max_hr"},
+				rows,
+			)
 		},
 	}
 	return cmd
@@ -369,5 +427,17 @@ func formatMaybeFloat0(v float64, decimals int) string {
 	}
 	format := fmt.Sprintf("%%.%df", decimals)
 	return fmt.Sprintf(format, v)
+}
+
+func formatPaceMinPerKM(distanceMeters, durationSeconds float64) string {
+	if distanceMeters <= 0 || durationSeconds <= 0 {
+		return "—"
+	}
+	km := distanceMeters / 1000.0
+	secPerKM := durationSeconds / km
+	d := time.Duration(secPerKM * float64(time.Second))
+	min := int(d.Minutes())
+	sec := int(d.Seconds()) % 60
+	return fmt.Sprintf("%d:%02d", min, sec)
 }
 
