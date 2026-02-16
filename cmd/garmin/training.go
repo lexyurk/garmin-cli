@@ -54,13 +54,11 @@ func newTrainingStatusCmd(opts *globalOptions) *cobra.Command {
 			}
 
 			ctx := context.Background()
-			results := make([]garmintraining.StatusSummary, 0, len(dates))
-			for _, d := range dates {
-				s, err := garmintraining.GetStatus(ctx, c, d)
-				if err != nil {
-					return err
-				}
-				results = append(results, s)
+			results, err := mapDatesConcurrently(ctx, dates, 4, func(ctx context.Context, date string) (garmintraining.StatusSummary, error) {
+				return garmintraining.GetStatus(ctx, c, date)
+			})
+			if err != nil {
+				return err
 			}
 
 			if opts.Format == "json" {
@@ -121,13 +119,11 @@ func newTrainingReadinessCmd(opts *globalOptions) *cobra.Command {
 			}
 
 			ctx := context.Background()
-			results := make([]garmintraining.ReadinessSummary, 0, len(dates))
-			for _, d := range dates {
-				s, err := garmintraining.GetReadiness(ctx, c, d)
-				if err != nil {
-					return err
-				}
-				results = append(results, s)
+			results, err := mapDatesConcurrently(ctx, dates, 4, func(ctx context.Context, date string) (garmintraining.ReadinessSummary, error) {
+				return garmintraining.GetReadiness(ctx, c, date)
+			})
+			if err != nil {
+				return err
 			}
 
 			if opts.Format == "json" {
@@ -236,13 +232,11 @@ func newTrainingHrvCmd(opts *globalOptions) *cobra.Command {
 			}
 
 			ctx := context.Background()
-			results := make([]garmintraining.HRVSummary, 0, len(dates))
-			for _, d := range dates {
-				s, err := garmintraining.GetHRV(ctx, c, d)
-				if err != nil {
-					return err
-				}
-				results = append(results, s)
+			results, err := mapDatesConcurrently(ctx, dates, 4, func(ctx context.Context, date string) (garmintraining.HRVSummary, error) {
+				return garmintraining.GetHRV(ctx, c, date)
+			})
+			if err != nil {
+				return err
 			}
 
 			if opts.Format == "json" {

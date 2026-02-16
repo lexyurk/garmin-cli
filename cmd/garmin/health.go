@@ -62,13 +62,11 @@ func newHealthSleepCmd(opts *globalOptions) *cobra.Command {
 			}
 
 			ctx := context.Background()
-			results := make([]garminhealth.SleepSummary, 0, len(dates))
-			for _, day := range dates {
-				s, err := garminhealth.GetSleep(ctx, c, day)
-				if err != nil {
-					return err
-				}
-				results = append(results, s)
+			results, err := mapDatesConcurrently(ctx, dates, 4, func(ctx context.Context, date string) (garminhealth.SleepSummary, error) {
+				return garminhealth.GetSleep(ctx, c, date)
+			})
+			if err != nil {
+				return err
 			}
 
 			if opts.Format == "json" {
@@ -141,18 +139,16 @@ func newHealthHeartRateCmd(opts *globalOptions) *cobra.Command {
 			}
 
 			ctx := context.Background()
-			out := make([]heartRateSummary, 0, len(dates))
-			for _, d := range dates {
-				s, err := garminhealth.GetDailySummary(ctx, c, d)
-				if err != nil {
-					return err
-				}
-				out = append(out, heartRateSummary{
-					Date:      s.CalendarDateOr(d),
-					RestingHR: s.RestingHeartRate,
-					MinHR:     s.MinHeartRate,
-					MaxHR:     s.MaxHeartRate,
-				})
+			summaries, err := mapDatesConcurrently(ctx, dates, 4, func(ctx context.Context, date string) (garminhealth.DailySummary, error) {
+				return garminhealth.GetDailySummary(ctx, c, date)
+			})
+			if err != nil {
+				return err
+			}
+			out := make([]heartRateSummary, 0, len(summaries))
+			for i, s := range summaries {
+				d := dates[i]
+				out = append(out, heartRateSummary{Date: s.CalendarDateOr(d), RestingHR: s.RestingHeartRate, MinHR: s.MinHeartRate, MaxHR: s.MaxHeartRate})
 			}
 
 			if opts.Format == "json" {
@@ -210,18 +206,16 @@ func newHealthStepsCmd(opts *globalOptions) *cobra.Command {
 			}
 
 			ctx := context.Background()
-			out := make([]stepsSummary, 0, len(dates))
-			for _, d := range dates {
-				s, err := garminhealth.GetDailySummary(ctx, c, d)
-				if err != nil {
-					return err
-				}
-				out = append(out, stepsSummary{
-					Date:           s.CalendarDateOr(d),
-					TotalSteps:     s.TotalSteps,
-					Goal:           s.DailyStepGoal,
-					DistanceMeters: s.TotalDistanceMeters,
-				})
+			summaries, err := mapDatesConcurrently(ctx, dates, 4, func(ctx context.Context, date string) (garminhealth.DailySummary, error) {
+				return garminhealth.GetDailySummary(ctx, c, date)
+			})
+			if err != nil {
+				return err
+			}
+			out := make([]stepsSummary, 0, len(summaries))
+			for i, s := range summaries {
+				d := dates[i]
+				out = append(out, stepsSummary{Date: s.CalendarDateOr(d), TotalSteps: s.TotalSteps, Goal: s.DailyStepGoal, DistanceMeters: s.TotalDistanceMeters})
 			}
 
 			if opts.Format == "json" {
@@ -279,18 +273,16 @@ func newHealthStressCmd(opts *globalOptions) *cobra.Command {
 			}
 
 			ctx := context.Background()
-			out := make([]stressSummary, 0, len(dates))
-			for _, d := range dates {
-				s, err := garminhealth.GetDailySummary(ctx, c, d)
-				if err != nil {
-					return err
-				}
-				out = append(out, stressSummary{
-					Date:      s.CalendarDateOr(d),
-					Average:   s.AverageStressLevel,
-					Max:       s.MaxStressLevel,
-					Qualifier: s.StressQualifier,
-				})
+			summaries, err := mapDatesConcurrently(ctx, dates, 4, func(ctx context.Context, date string) (garminhealth.DailySummary, error) {
+				return garminhealth.GetDailySummary(ctx, c, date)
+			})
+			if err != nil {
+				return err
+			}
+			out := make([]stressSummary, 0, len(summaries))
+			for i, s := range summaries {
+				d := dates[i]
+				out = append(out, stressSummary{Date: s.CalendarDateOr(d), Average: s.AverageStressLevel, Max: s.MaxStressLevel, Qualifier: s.StressQualifier})
 			}
 
 			if opts.Format == "json" {
@@ -348,19 +340,22 @@ func newHealthBodyBatteryCmd(opts *globalOptions) *cobra.Command {
 			}
 
 			ctx := context.Background()
-			out := make([]bodyBatterySummary, 0, len(dates))
-			for _, d := range dates {
-				s, err := garminhealth.GetDailySummary(ctx, c, d)
-				if err != nil {
-					return err
-				}
+			summaries, err := mapDatesConcurrently(ctx, dates, 4, func(ctx context.Context, date string) (garminhealth.DailySummary, error) {
+				return garminhealth.GetDailySummary(ctx, c, date)
+			})
+			if err != nil {
+				return err
+			}
+			out := make([]bodyBatterySummary, 0, len(summaries))
+			for i, s := range summaries {
+				d := dates[i]
 				out = append(out, bodyBatterySummary{
-					Date:     s.CalendarDateOr(d),
-					Highest:  s.BodyBatteryHighestValue,
-					Lowest:   s.BodyBatteryLowestValue,
+					Date:       s.CalendarDateOr(d),
+					Highest:    s.BodyBatteryHighestValue,
+					Lowest:     s.BodyBatteryLowestValue,
 					MostRecent: s.BodyBatteryMostRecentValue,
-					Charged:  s.BodyBatteryChargedValue,
-					Drained:  s.BodyBatteryDrainedValue,
+					Charged:    s.BodyBatteryChargedValue,
+					Drained:    s.BodyBatteryDrainedValue,
 				})
 			}
 
