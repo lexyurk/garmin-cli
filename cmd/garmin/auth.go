@@ -101,10 +101,10 @@ func newAuthLoginCmd(opts *globalOptions) *cobra.Command {
 			}
 
 			if opts.Format == "json" {
-				return output.JSON(map[string]any{
-					"authenticated": true,
-					"profile":       opts.Profile,
-					"expires_at":    session.OAuth2.ExpiresAt,
+				return output.JSON(authLoginJSON{
+					Authenticated: true,
+					Profile:       opts.Profile,
+					ExpiresAt:     session.OAuth2.ExpiresAt,
 				})
 			}
 
@@ -140,9 +140,9 @@ func newAuthStatusCmd(opts *globalOptions) *cobra.Command {
 			if err != nil {
 				if errors.Is(err, auth.ErrNotAuthenticated) {
 					if opts.Format == "json" {
-						return output.JSON(map[string]any{
-							"authenticated": false,
-							"profile":       opts.Profile,
+						return output.JSON(authStatusJSON{
+							Authenticated: false,
+							Profile:       opts.Profile,
 						})
 					}
 					return renderKV(opts.Format, "Authentication", map[string]string{
@@ -152,10 +152,10 @@ func newAuthStatusCmd(opts *globalOptions) *cobra.Command {
 					})
 				}
 				if opts.Format == "json" {
-					return output.JSON(map[string]any{
-						"authenticated": false,
-						"error":         err.Error(),
-						"profile":       opts.Profile,
+					return output.JSON(authStatusJSON{
+						Authenticated: false,
+						Profile:       opts.Profile,
+						Error:         err.Error(),
 					})
 				}
 				_ = renderKV(opts.Format, "Authentication", map[string]string{
@@ -180,11 +180,11 @@ func newAuthStatusCmd(opts *globalOptions) *cobra.Command {
 			if opts.Format == "json" {
 				// Keep it intentionally small; don't emit tokens.
 				sess, _ := auth.LoadSession(cfgDir, opts.Profile)
-				return output.JSON(map[string]any{
-					"authenticated": true,
-					"profile":       opts.Profile,
-					"display_name":  displayName,
-					"expires_at":    sess.OAuth2.ExpiresAt,
+				return output.JSON(authStatusJSON{
+					Authenticated: true,
+					Profile:       opts.Profile,
+					DisplayName:   displayName,
+					ExpiresAt:     sess.OAuth2.ExpiresAt,
 				})
 			}
 
@@ -214,9 +214,9 @@ func newAuthLogoutCmd(opts *globalOptions) *cobra.Command {
 				return err
 			}
 			if opts.Format == "json" {
-				return output.JSON(map[string]any{
-					"ok":      true,
-					"profile": opts.Profile,
+				return output.JSON(authLogoutJSON{
+					OK:      true,
+					Profile: opts.Profile,
 				})
 			}
 			return renderKV(opts.Format, "Logged out", map[string]string{
@@ -241,6 +241,25 @@ func readLine(prompt string, r io.Reader) (string, error) {
 		return "", err
 	}
 	return strings.TrimSpace(line), nil
+}
+
+type authLoginJSON struct {
+	Authenticated bool   `json:"authenticated"`
+	Profile       string `json:"profile,omitempty"`
+	ExpiresAt     int64  `json:"expires_at,omitempty"`
+}
+
+type authStatusJSON struct {
+	Authenticated bool   `json:"authenticated"`
+	Profile       string `json:"profile,omitempty"`
+	DisplayName   string `json:"display_name,omitempty"`
+	ExpiresAt     int64  `json:"expires_at,omitempty"`
+	Error         string `json:"error,omitempty"`
+}
+
+type authLogoutJSON struct {
+	OK      bool   `json:"ok"`
+	Profile string `json:"profile,omitempty"`
 }
 
 

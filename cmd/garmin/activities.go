@@ -173,7 +173,10 @@ func newActivitiesSplitsCmd(opts *globalOptions) *cobra.Command {
 			}
 
 			if opts.Format == "json" {
-				return output.JSON(map[string]any{"activity_id": id, "splits": raw["splitSummaries"]})
+				return output.JSON(activitiesSplitsJSON{
+					ActivityID: id,
+					Splits:     raw["splitSummaries"],
+				})
 			}
 
 			splits := garminactivities.ExtractSplits(raw)
@@ -277,5 +280,10 @@ func formatPaceMinPerKM(distanceMeters, durationSeconds float64) string {
 	min := int(d.Minutes())
 	sec := int(d.Seconds()) % 60
 	return fmt.Sprintf("%d:%02d", min, sec)
+}
+
+type activitiesSplitsJSON struct {
+	ActivityID int64 `json:"activity_id"`
+	Splits     any   `json:"splits"`
 }
 

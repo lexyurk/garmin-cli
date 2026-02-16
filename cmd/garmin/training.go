@@ -188,9 +188,9 @@ func newTrainingVo2maxCmd(opts *globalOptions) *cobra.Command {
 			}
 
 			if opts.Format == "json" {
-				return output.JSON(map[string]any{
-					"running": vo2.Running,
-					"cycling": vo2.Cycling,
+				return output.JSON(vo2maxJSON{
+					Running: vo2.Running,
+					Cycling: vo2.Cycling,
 				})
 			}
 			return renderKV(opts.Format, "VO2 max", map[string]string{
@@ -275,5 +275,10 @@ func formatMaybeFloatPtr(v *float64, decimals int) string {
 	}
 	format := fmt.Sprintf("%%.%df", decimals)
 	return fmt.Sprintf(format, *v)
+}
+
+type vo2maxJSON struct {
+	Running float64 `json:"running"`
+	Cycling float64 `json:"cycling"`
 }
 
