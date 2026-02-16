@@ -25,3 +25,23 @@ func TestRenderNotAuthenticatedString_JSON(t *testing.T) {
 	}
 }
 
+func TestRenderNotAuthenticatedString_Table(t *testing.T) {
+	got := renderNotAuthenticatedString("table", "")
+	if !strings.Contains(got, "field") || !strings.Contains(got, "value") {
+		t.Fatalf("expected table headers, got: %q", got)
+	}
+	if !strings.Contains(got, "not authenticated") {
+		t.Fatalf("expected status in table, got: %q", got)
+	}
+}
+
+func TestRenderNotAuthenticatedString_Human(t *testing.T) {
+	got := renderNotAuthenticatedString("human", "")
+	if !strings.Contains(got, "=== Authentication ===") {
+		t.Fatalf("expected title, got: %q", got)
+	}
+	if !strings.Contains(got, "status: not authenticated") {
+		t.Fatalf("expected status, got: %q", got)
+	}
+}
+
