@@ -103,7 +103,7 @@ func newAuthLoginCmd(opts *globalOptions) *cobra.Command {
 			if opts.Format == "json" {
 				return output.JSON(authLoginJSON{
 					Authenticated: true,
-					Profile:       opts.Profile,
+					Profile:       orDefault(opts.Profile, "default"),
 					ExpiresAt:     session.OAuth2.ExpiresAt,
 				})
 			}
@@ -142,7 +142,7 @@ func newAuthStatusCmd(opts *globalOptions) *cobra.Command {
 					if opts.Format == "json" {
 						return output.JSON(authStatusJSON{
 							Authenticated: false,
-							Profile:       opts.Profile,
+							Profile:       orDefault(opts.Profile, "default"),
 						})
 					}
 					return renderKV(opts.Format, "Authentication", map[string]string{
@@ -154,7 +154,7 @@ func newAuthStatusCmd(opts *globalOptions) *cobra.Command {
 				if opts.Format == "json" {
 					return output.JSON(authStatusJSON{
 						Authenticated: false,
-						Profile:       opts.Profile,
+						Profile:       orDefault(opts.Profile, "default"),
 						Error:         err.Error(),
 					})
 				}
@@ -182,7 +182,7 @@ func newAuthStatusCmd(opts *globalOptions) *cobra.Command {
 				sess, _ := auth.LoadSession(cfgDir, opts.Profile)
 				return output.JSON(authStatusJSON{
 					Authenticated: true,
-					Profile:       opts.Profile,
+					Profile:       orDefault(opts.Profile, "default"),
 					DisplayName:   displayName,
 					ExpiresAt:     sess.OAuth2.ExpiresAt,
 				})
@@ -216,7 +216,7 @@ func newAuthLogoutCmd(opts *globalOptions) *cobra.Command {
 			if opts.Format == "json" {
 				return output.JSON(authLogoutJSON{
 					OK:      true,
-					Profile: opts.Profile,
+					Profile: orDefault(opts.Profile, "default"),
 				})
 			}
 			return renderKV(opts.Format, "Logged out", map[string]string{
