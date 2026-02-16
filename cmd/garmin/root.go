@@ -27,6 +27,12 @@ func NewRootCmd(version string) *cobra.Command {
 		SilenceUsage:  true,
 		SilenceErrors: true,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+			// Meta commands should always work, even with broken config.
+			switch cmd.Name() {
+			case "completion", "version":
+				return nil
+			}
+
 			// Help should always work, even with broken config.
 			if help, _ := cmd.Flags().GetBool("help"); help {
 				return nil
@@ -95,6 +101,7 @@ func NewRootCmd(version string) *cobra.Command {
 		NewHealthCmd(opts),
 		NewActivitiesCmd(opts),
 		NewTrainingCmd(opts),
+		NewCompletionCmd(),
 		NewVersionCmd(version),
 	)
 

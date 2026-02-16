@@ -11,7 +11,7 @@ func NewVersionCmd(version string) *cobra.Command {
 		Use:   "version",
 		Short: "Print version",
 		Run: func(cmd *cobra.Command, args []string) {
-			fmt.Printf("garmin %s\n", version)
+			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "garmin %s\n", version)
 		},
 	}
 }

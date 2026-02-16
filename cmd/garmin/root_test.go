@@ -76,3 +76,43 @@ func TestRoot_FlagsOverrideEnv(t *testing.T) {
 		t.Fatalf("expected flags override env, got:\n%s", got)
 	}
 }
+
+func TestRoot_CompletionWorksWithBrokenConfig(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "config.toml"), []byte("this is not valid toml\n"), 0o600); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+
+	cmd := NewRootCmd("dev")
+	var out bytes.Buffer
+	cmd.SetOut(&out)
+	cmd.SetErr(&out)
+	cmd.SetArgs([]string{"--config-dir", dir, "completion", "bash"})
+
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("expected completion to work with broken config, got: %v\noutput:\n%s", err, out.String())
+	}
+	if out.Len() == 0 {
+		t.Fatalf("expected completion output, got empty")
+	}
+}
+
+func TestRoot_VersionWorksWithBrokenConfig(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "config.toml"), []byte("this is not valid toml\n"), 0o600); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+
+	cmd := NewRootCmd("dev")
+	var out bytes.Buffer
+	cmd.SetOut(&out)
+	cmd.SetErr(&out)
+	cmd.SetArgs([]string{"--config-dir", dir, "version"})
+
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("expected version to work with broken config, got: %v\noutput:\n%s", err, out.String())
+	}
+	if !strings.Contains(out.String(), "garmin dev") {
+		t.Fatalf("expected version output, got:\n%s", out.String())
+	}
+}
