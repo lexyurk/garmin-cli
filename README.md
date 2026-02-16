@@ -66,6 +66,18 @@ garmin health sleep --days 7
 garmin activities list --after 2026-01-01 --before 2026-02-01 --limit 50
 ```
 
+## Shell completion
+
+```bash
+# bash
+source <(garmin completion bash)
+
+# zsh/fish/powershell are also supported:
+garmin completion zsh
+garmin completion fish
+garmin completion powershell
+```
+
 ### Non-interactive login (recommended for CI)
 
 ```bash
