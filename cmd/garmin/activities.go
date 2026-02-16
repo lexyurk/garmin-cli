@@ -2,6 +2,9 @@ package main
 
 import (
 	"fmt"
+	"io"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -9,6 +12,7 @@ import (
 	garminactivities "github.com/lexyurk/garmin-cli/internal/activities"
 	"github.com/lexyurk/garmin-cli/internal/output"
 	"github.com/spf13/cobra"
+	"golang.org/x/term"
 )
 
 func NewActivitiesCmd(opts *globalOptions) *cobra.Command {
@@ -21,6 +25,7 @@ func NewActivitiesCmd(opts *globalOptions) *cobra.Command {
 		newActivitiesListCmd(opts),
 		newActivitiesGetCmd(opts),
 		newActivitiesSplitsCmd(opts),
+		newActivitiesExportCmd(opts),
 	)
 
 	return cmd
@@ -202,6 +207,80 @@ func newActivitiesSplitsCmd(opts *globalOptions) *cobra.Command {
 			return renderTableTo(cmd.OutOrStdout(), opts.Format, []string{"split", "dist_km", "duration", "pace_min_per_km", "avg_hr", "max_hr"}, rows)
 		},
 	}
+	return cmd
+}
+
+func newActivitiesExportCmd(opts *globalOptions) *cobra.Command {
+	var exportType string
+	var outPath string
+	var force bool
+
+	cmd := &cobra.Command{
+		Use:   "export [activity-id]",
+		Short: "Download an activity file (GPX/TCX/original)",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			id, err := strconv.ParseInt(args[0], 10, 64)
+			if err != nil {
+				return fmt.Errorf("invalid activity id %q", args[0])
+			}
+
+			t := strings.ToLower(strings.TrimSpace(exportType))
+			switch t {
+			case "", "gpx":
+				t = "gpx"
+			case "tcx":
+				// ok
+			case "fit":
+				// Garmin calls this "original".
+				t = "original"
+			case "original":
+				// ok
+			default:
+				return fmt.Errorf("unsupported --type %q (supported: gpx, tcx, fit, original)", exportType)
+			}
+
+			c, err := newAuthedClient(cmd, opts)
+			if err != nil {
+				return err
+			}
+
+			w := cmd.OutOrStdout()
+			var f *os.File
+			if strings.TrimSpace(outPath) != "" {
+				if err := os.MkdirAll(filepath.Dir(outPath), 0o755); err != nil {
+					return err
+				}
+				flags := os.O_CREATE | os.O_WRONLY | os.O_TRUNC
+				if !force {
+					flags = os.O_CREATE | os.O_WRONLY | os.O_EXCL
+				}
+				f, err = os.OpenFile(outPath, flags, 0o644)
+				if err != nil {
+					return err
+				}
+				defer f.Close()
+				w = f
+			} else if outf, ok := w.(*os.File); ok && term.IsTerminal(int(outf.Fd())) {
+				return fmt.Errorf("refusing to write activity file to terminal; use --out or redirect stdout")
+			}
+
+			ctx := cmd.Context()
+			if err := garminactivities.Export(ctx, c, id, garminactivities.ExportType(t), w); err != nil {
+				return handleAuthedErrorTo(cmd.ErrOrStderr(), opts, err)
+			}
+
+			// If writing to a file, print a small confirmation to stderr (stdout stays clean).
+			if f != nil && !opts.Quiet {
+				_, _ = io.WriteString(cmd.ErrOrStderr(), "downloaded\n")
+			}
+			return nil
+		},
+	}
+
+	cmd.Flags().StringVar(&exportType, "type", "gpx", "Export type: gpx, tcx, fit, original")
+	cmd.Flags().StringVar(&outPath, "out", "", "Write to file instead of stdout")
+	cmd.Flags().BoolVar(&force, "force", false, "Overwrite output file if it exists")
 	return cmd
 }
 

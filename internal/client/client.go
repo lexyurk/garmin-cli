@@ -94,6 +94,12 @@ func (c *Client) logfSafe(format string, args ...any) {
 
 // Do performs an authenticated request to the Connect API.
 func (c *Client) Do(ctx context.Context, method, path string, query url.Values, body io.Reader, contentType string) (*http.Response, error) {
+	return c.DoRaw(ctx, method, path, query, body, contentType, "application/json")
+}
+
+// DoRaw performs an authenticated request to the Connect API with a caller-provided Accept header.
+// If accept is empty, "application/json" is used.
+func (c *Client) DoRaw(ctx context.Context, method, path string, query url.Values, body io.Reader, contentType, accept string) (*http.Response, error) {
 	if err := c.ensureFreshOAuth2(ctx); err != nil {
 		return nil, err
 	}
@@ -120,7 +126,10 @@ func (c *Client) Do(ctx context.Context, method, path string, query url.Values, 
 	if contentType != "" {
 		req.Header.Set("Content-Type", contentType)
 	}
-	req.Header.Set("Accept", "application/json")
+	if strings.TrimSpace(accept) == "" {
+		accept = "application/json"
+	}
+	req.Header.Set("Accept", accept)
 
 	return c.doWithRetry(req)
 }

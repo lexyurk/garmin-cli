@@ -49,6 +49,7 @@ garmin health steps
 garmin activities list --limit 10
 garmin activities get <activity-id>
 garmin activities splits <activity-id>
+garmin activities export <activity-id> --type gpx --out activity.gpx
 
 # Training metrics
 garmin training status
@@ -115,6 +116,7 @@ printf '%s' "$GARMIN_PASSWORD" | garmin auth login --email "$GARMIN_EMAIL" --pas
 | `activities list`        | List activities                        |
 | `activities get <id>`    | Get activity details                   |
 | `activities splits <id>` | Get activity splits/laps               |
+| `activities export <id>` | Download activity GPX/TCX/original     |
 | `training status`        | Training status                        |
 | `training readiness`     | Training readiness score               |
 | `training vo2max`        | VO2 max estimates                      |
