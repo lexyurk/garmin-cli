@@ -27,6 +27,11 @@ func NewRootCmd(version string) *cobra.Command {
 		SilenceUsage: true,
 		SilenceErrors: true,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+			// Help should always work, even with broken config.
+			if help, _ := cmd.Flags().GetBool("help"); help {
+				return nil
+			}
+
 			// Env defaults (no network calls; safe for `--help`).
 			formatFlag := cmd.Flags().Changed("format")
 			profileFlag := cmd.Flags().Changed("profile")
@@ -42,18 +47,26 @@ func NewRootCmd(version string) *cobra.Command {
 			}
 
 			// Config file defaults (lowest precedence).
-			if !formatFlag && formatEnv == "" || (!profileFlag && profileEnv == "") {
-				if cfgDir, err := config.ResolveConfigDir(opts.ConfigDir); err == nil {
-					if fileCfg, err := config.LoadAppConfig(cfgDir); err == nil {
-						if !formatFlag && formatEnv == "" && strings.TrimSpace(fileCfg.Format) != "" {
-							opts.Format = fileCfg.Format
-						}
-						if !profileFlag && profileEnv == "" && strings.TrimSpace(fileCfg.Profile) != "" {
-							opts.Profile = fileCfg.Profile
-						}
-					} else if opts.ConfigDir != "" {
-						// User explicitly set a config dir; config parsing errors should be surfaced.
+			needFormatFromFile := !formatFlag && formatEnv == ""
+			needProfileFromFile := !profileFlag && profileEnv == ""
+			if needFormatFromFile || needProfileFromFile {
+				cfgDir, err := config.ResolveConfigDir(opts.ConfigDir)
+				if err != nil {
+					return err
+				}
+				fileCfg, err := config.LoadAppConfig(cfgDir)
+				if err != nil {
+					// If the user explicitly points at a config dir, fail loudly.
+					if opts.ConfigDir != "" || os.Getenv("GARMIN_CONFIG_DIR") != "" {
 						return err
+					}
+					// Otherwise, keep defaults.
+				} else {
+					if needFormatFromFile && strings.TrimSpace(fileCfg.Format) != "" {
+						opts.Format = fileCfg.Format
+					}
+					if needProfileFromFile && strings.TrimSpace(fileCfg.Profile) != "" {
+						opts.Profile = fileCfg.Profile
 					}
 				}
 			}
