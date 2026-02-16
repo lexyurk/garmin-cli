@@ -103,7 +103,15 @@ printf '%s' "$GARMIN_PASSWORD" | garmin auth login --email "$GARMIN_EMAIL" --pas
 
 ## Configuration
 
-Config stored in `~/.config/garmin/config.toml` (planned).
+Config stored in `~/.config/garmin/config.toml`.
+
+Supported keys:
+
+```toml
+# ~/.config/garmin/config.toml
+format = "markdown" # markdown|table|human|json
+profile = "default"
+```
 
 Tokens stored in:
 

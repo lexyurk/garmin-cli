@@ -5,6 +5,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/lexyurk/garmin-cli/internal/config"
 	"github.com/spf13/cobra"
 )
 
@@ -27,14 +28,33 @@ func NewRootCmd(version string) *cobra.Command {
 		SilenceErrors: true,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			// Env defaults (no network calls; safe for `--help`).
-			if !cmd.Flags().Changed("format") {
-				if env := strings.TrimSpace(os.Getenv("GARMIN_FORMAT")); env != "" {
-					opts.Format = env
-				}
+			formatFlag := cmd.Flags().Changed("format")
+			profileFlag := cmd.Flags().Changed("profile")
+
+			formatEnv := strings.TrimSpace(os.Getenv("GARMIN_FORMAT"))
+			profileEnv := strings.TrimSpace(os.Getenv("GARMIN_PROFILE"))
+
+			if !formatFlag && formatEnv != "" {
+				opts.Format = formatEnv
 			}
-			if !cmd.Flags().Changed("profile") {
-				if env := strings.TrimSpace(os.Getenv("GARMIN_PROFILE")); env != "" {
-					opts.Profile = env
+			if !profileFlag && profileEnv != "" {
+				opts.Profile = profileEnv
+			}
+
+			// Config file defaults (lowest precedence).
+			if !formatFlag && formatEnv == "" || (!profileFlag && profileEnv == "") {
+				if cfgDir, err := config.ResolveConfigDir(opts.ConfigDir); err == nil {
+					if fileCfg, err := config.LoadAppConfig(cfgDir); err == nil {
+						if !formatFlag && formatEnv == "" && strings.TrimSpace(fileCfg.Format) != "" {
+							opts.Format = fileCfg.Format
+						}
+						if !profileFlag && profileEnv == "" && strings.TrimSpace(fileCfg.Profile) != "" {
+							opts.Profile = fileCfg.Profile
+						}
+					} else if opts.ConfigDir != "" {
+						// User explicitly set a config dir; config parsing errors should be surfaced.
+						return err
+					}
 				}
 			}
 
