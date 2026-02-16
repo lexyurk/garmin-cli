@@ -31,10 +31,6 @@ func ResolveConfigDir(flagValue string) (string, error) {
 	return filepath.Join(dir, AppName), nil
 }
 
-func ProfileDir(configDir, profile string) string {
-	return filepath.Join(configDir, "profiles", sanitizeProfile(profile))
-}
-
 func TokensDir(configDir, profile string) string {
 	return filepath.Join(configDir, "tokens", sanitizeProfile(profile))
 }
