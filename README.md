@@ -91,7 +91,12 @@ garmin auth status
 
 Config stored in `~/.config/garmin/config.toml` (planned).
 
-Tokens stored in `~/.config/garmin/tokens/`.
+Tokens stored in:
+
+```
+~/.config/garmin/tokens/<profile>/oauth1_token.json
+~/.config/garmin/tokens/<profile>/oauth2_token.json
+```
 
 ### Environment Variables
 
@@ -101,6 +106,7 @@ Tokens stored in `~/.config/garmin/tokens/`.
 | `GARMIN_PASSWORD` | Garmin Connect password |
 | `GARMIN_FORMAT`   | Default output format   |
 | `GARMIN_PROFILE`  | Default profile name    |
+| `GARMIN_CONFIG_DIR` | Override config directory |
 
 ## Development
 
