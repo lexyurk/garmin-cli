@@ -30,7 +30,7 @@ func getOAuth1Token(ctx context.Context, consumer oauthConsumer, ticket string) 
 	q.Set("accepts-mfa-tokens", "true")
 	u.RawQuery = q.Encode()
 
-	httpClient := oauth1HTTPClient(ctx, consumer, &oauth1.Token{Token: "", TokenSecret: ""})
+	httpClient := oauth1HTTPClient(ctx, consumer, nil)
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
 	if err != nil {
