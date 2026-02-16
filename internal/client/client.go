@@ -121,6 +121,10 @@ func (c *Client) GetJSON(ctx context.Context, path string, query url.Values, out
 	}
 	defer resp.Body.Close()
 
+	if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden {
+		b, _ := io.ReadAll(io.LimitReader(resp.Body, 16<<10))
+		return fmt.Errorf("%w: %s: %s", auth.ErrNotAuthenticated, resp.Status, stringsTrim(string(b)))
+	}
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		b, _ := io.ReadAll(io.LimitReader(resp.Body, 16<<10))
 		return fmt.Errorf("garmin connectapi error: %s: %s", resp.Status, stringsTrim(string(b)))
@@ -179,7 +183,22 @@ func (c *Client) doWithRetry(req *http.Request) (*http.Response, error) {
 	const maxRetries = 3
 	var lastErr error
 	for attempt := 0; attempt <= maxRetries; attempt++ {
-		resp, err := c.httpClient.Do(req)
+		r := req
+		if attempt > 0 {
+			if req.GetBody != nil {
+				body, err := req.GetBody()
+				if err != nil {
+					return nil, err
+				}
+				r = req.Clone(req.Context())
+				r.Body = body
+			} else if req.Body != nil {
+				// Can't safely retry requests with a non-rewindable body.
+				return nil, lastErr
+			}
+		}
+
+		resp, err := c.httpClient.Do(r)
 		if err == nil && resp != nil && resp.StatusCode < 500 && resp.StatusCode != 429 {
 			return resp, nil
 		}
