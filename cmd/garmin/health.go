@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/lexyurk/garmin-cli/internal/client"
@@ -119,69 +120,281 @@ func newHealthSleepCmd(opts *globalOptions) *cobra.Command {
 
 func newHealthHeartRateCmd(opts *globalOptions) *cobra.Command {
 	var date string
+	var from string
+	var to string
+	var days int
 
 	cmd := &cobra.Command{
 		Use:   "heart-rate",
 		Short: "Heart rate data",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			_ = opts
-			_ = date
-			fmt.Println("TODO: garmin health heart-rate")
-			return nil
+			cfgDir, err := config.ResolveConfigDir(opts.ConfigDir)
+			if err != nil {
+				return err
+			}
+			dates, err := timeutil.ResolveDates(timeutil.RangeOptions{Date: date, From: from, To: to, Days: days}, time.Now())
+			if err != nil {
+				return err
+			}
+			c, err := client.New(cfgDir, opts.Profile, client.Options{})
+			if err != nil {
+				return err
+			}
+
+			ctx := context.Background()
+			out := make([]heartRateSummary, 0, len(dates))
+			for _, d := range dates {
+				s, err := fetchDailySummary(ctx, c, d)
+				if err != nil {
+					return err
+				}
+				out = append(out, heartRateSummary{
+					Date:      s.CalendarDateOr(d),
+					RestingHR: s.RestingHeartRate,
+					MinHR:     s.MinHeartRate,
+					MaxHR:     s.MaxHeartRate,
+				})
+			}
+
+			if opts.Format == "json" {
+				return output.JSON(out)
+			}
+			if len(out) == 1 {
+				r := out[0]
+				return output.MarkdownKV("Heart rate", map[string]string{
+					"date":        r.Date,
+					"resting_hr":  formatMaybeInt(r.RestingHR),
+					"min_hr":      formatMaybeInt(r.MinHR),
+					"max_hr":      formatMaybeInt(r.MaxHR),
+				})
+			}
+			rows := make([][]string, 0, len(out))
+			for _, r := range out {
+				rows = append(rows, []string{
+					r.Date,
+					formatMaybeInt(r.RestingHR),
+					formatMaybeInt(r.MinHR),
+					formatMaybeInt(r.MaxHR),
+				})
+			}
+			return output.MarkdownTable([]string{"date", "resting_hr", "min_hr", "max_hr"}, rows)
 		},
 	}
 	cmd.Flags().StringVar(&date, "date", "", "Date (YYYY-MM-DD, default: today)")
+	cmd.Flags().StringVar(&from, "from", "", "Start date (YYYY-MM-DD, inclusive)")
+	cmd.Flags().StringVar(&to, "to", "", "End date (YYYY-MM-DD, inclusive)")
+	cmd.Flags().IntVar(&days, "days", 0, "Shortcut: last N days (ending today)")
 	return cmd
 }
 
 func newHealthStepsCmd(opts *globalOptions) *cobra.Command {
 	var date string
+	var from string
+	var to string
+	var days int
 
 	cmd := &cobra.Command{
 		Use:   "steps",
 		Short: "Step count",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			_ = opts
-			_ = date
-			fmt.Println("TODO: garmin health steps")
-			return nil
+			cfgDir, err := config.ResolveConfigDir(opts.ConfigDir)
+			if err != nil {
+				return err
+			}
+			dates, err := timeutil.ResolveDates(timeutil.RangeOptions{Date: date, From: from, To: to, Days: days}, time.Now())
+			if err != nil {
+				return err
+			}
+			c, err := client.New(cfgDir, opts.Profile, client.Options{})
+			if err != nil {
+				return err
+			}
+
+			ctx := context.Background()
+			out := make([]stepsSummary, 0, len(dates))
+			for _, d := range dates {
+				s, err := fetchDailySummary(ctx, c, d)
+				if err != nil {
+					return err
+				}
+				out = append(out, stepsSummary{
+					Date:           s.CalendarDateOr(d),
+					TotalSteps:     s.TotalSteps,
+					Goal:           s.DailyStepGoal,
+					DistanceMeters: s.TotalDistanceMeters,
+				})
+			}
+
+			if opts.Format == "json" {
+				return output.JSON(out)
+			}
+			if len(out) == 1 {
+				r := out[0]
+				return output.MarkdownKV("Steps", map[string]string{
+					"date":     r.Date,
+					"steps":    formatMaybeInt(r.TotalSteps),
+					"goal":     formatMaybeInt(r.Goal),
+					"distance": formatMetersToKM(r.DistanceMeters),
+				})
+			}
+			rows := make([][]string, 0, len(out))
+			for _, r := range out {
+				rows = append(rows, []string{
+					r.Date,
+					formatMaybeInt(r.TotalSteps),
+					formatMaybeInt(r.Goal),
+					formatMetersToKM(r.DistanceMeters),
+				})
+			}
+			return output.MarkdownTable([]string{"date", "steps", "goal", "distance_km"}, rows)
 		},
 	}
 	cmd.Flags().StringVar(&date, "date", "", "Date (YYYY-MM-DD, default: today)")
+	cmd.Flags().StringVar(&from, "from", "", "Start date (YYYY-MM-DD, inclusive)")
+	cmd.Flags().StringVar(&to, "to", "", "End date (YYYY-MM-DD, inclusive)")
+	cmd.Flags().IntVar(&days, "days", 0, "Shortcut: last N days (ending today)")
 	return cmd
 }
 
 func newHealthStressCmd(opts *globalOptions) *cobra.Command {
 	var date string
+	var from string
+	var to string
+	var days int
 
 	cmd := &cobra.Command{
 		Use:   "stress",
 		Short: "Stress levels",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			_ = opts
-			_ = date
-			fmt.Println("TODO: garmin health stress")
-			return nil
+			cfgDir, err := config.ResolveConfigDir(opts.ConfigDir)
+			if err != nil {
+				return err
+			}
+			dates, err := timeutil.ResolveDates(timeutil.RangeOptions{Date: date, From: from, To: to, Days: days}, time.Now())
+			if err != nil {
+				return err
+			}
+			c, err := client.New(cfgDir, opts.Profile, client.Options{})
+			if err != nil {
+				return err
+			}
+
+			ctx := context.Background()
+			out := make([]stressSummary, 0, len(dates))
+			for _, d := range dates {
+				s, err := fetchDailySummary(ctx, c, d)
+				if err != nil {
+					return err
+				}
+				out = append(out, stressSummary{
+					Date:      s.CalendarDateOr(d),
+					Average:   s.AverageStressLevel,
+					Max:       s.MaxStressLevel,
+					Qualifier: s.StressQualifier,
+				})
+			}
+
+			if opts.Format == "json" {
+				return output.JSON(out)
+			}
+			if len(out) == 1 {
+				r := out[0]
+				return output.MarkdownKV("Stress", map[string]string{
+					"date":      r.Date,
+					"average":   formatMaybeInt(r.Average),
+					"max":       formatMaybeInt(r.Max),
+					"qualifier": orDash(r.Qualifier),
+				})
+			}
+			rows := make([][]string, 0, len(out))
+			for _, r := range out {
+				rows = append(rows, []string{
+					r.Date,
+					formatMaybeInt(r.Average),
+					formatMaybeInt(r.Max),
+					orDash(r.Qualifier),
+				})
+			}
+			return output.MarkdownTable([]string{"date", "avg", "max", "qualifier"}, rows)
 		},
 	}
 	cmd.Flags().StringVar(&date, "date", "", "Date (YYYY-MM-DD, default: today)")
+	cmd.Flags().StringVar(&from, "from", "", "Start date (YYYY-MM-DD, inclusive)")
+	cmd.Flags().StringVar(&to, "to", "", "End date (YYYY-MM-DD, inclusive)")
+	cmd.Flags().IntVar(&days, "days", 0, "Shortcut: last N days (ending today)")
 	return cmd
 }
 
 func newHealthBodyBatteryCmd(opts *globalOptions) *cobra.Command {
 	var date string
+	var from string
+	var to string
+	var days int
 
 	cmd := &cobra.Command{
 		Use:   "body-battery",
 		Short: "Body battery",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			_ = opts
-			_ = date
-			fmt.Println("TODO: garmin health body-battery")
-			return nil
+			cfgDir, err := config.ResolveConfigDir(opts.ConfigDir)
+			if err != nil {
+				return err
+			}
+			dates, err := timeutil.ResolveDates(timeutil.RangeOptions{Date: date, From: from, To: to, Days: days}, time.Now())
+			if err != nil {
+				return err
+			}
+			c, err := client.New(cfgDir, opts.Profile, client.Options{})
+			if err != nil {
+				return err
+			}
+
+			ctx := context.Background()
+			out := make([]bodyBatterySummary, 0, len(dates))
+			for _, d := range dates {
+				s, err := fetchDailySummary(ctx, c, d)
+				if err != nil {
+					return err
+				}
+				out = append(out, bodyBatterySummary{
+					Date:     s.CalendarDateOr(d),
+					Highest:  s.BodyBatteryHighestValue,
+					Lowest:   s.BodyBatteryLowestValue,
+					MostRecent: s.BodyBatteryMostRecentValue,
+					Charged:  s.BodyBatteryChargedValue,
+					Drained:  s.BodyBatteryDrainedValue,
+				})
+			}
+
+			if opts.Format == "json" {
+				return output.JSON(out)
+			}
+			if len(out) == 1 {
+				r := out[0]
+				return output.MarkdownKV("Body battery", map[string]string{
+					"date":       r.Date,
+					"highest":    formatMaybeInt(r.Highest),
+					"lowest":     formatMaybeInt(r.Lowest),
+					"most_recent": formatMaybeInt(r.MostRecent),
+					"charged":    formatMaybeInt(r.Charged),
+					"drained":    formatMaybeInt(r.Drained),
+				})
+			}
+			rows := make([][]string, 0, len(out))
+			for _, r := range out {
+				rows = append(rows, []string{
+					r.Date,
+					formatMaybeInt(r.Highest),
+					formatMaybeInt(r.Lowest),
+					formatMaybeInt(r.MostRecent),
+				})
+			}
+			return output.MarkdownTable([]string{"date", "high", "low", "most_recent"}, rows)
 		},
 	}
 	cmd.Flags().StringVar(&date, "date", "", "Date (YYYY-MM-DD, default: today)")
+	cmd.Flags().StringVar(&from, "from", "", "Start date (YYYY-MM-DD, inclusive)")
+	cmd.Flags().StringVar(&to, "to", "", "End date (YYYY-MM-DD, inclusive)")
+	cmd.Flags().IntVar(&days, "days", 0, "Shortcut: last N days (ending today)")
 	return cmd
 }
 
@@ -266,5 +479,84 @@ func formatMaybeFloat(v *float64, decimals int) string {
 	}
 	format := fmt.Sprintf("%%.%df", decimals)
 	return fmt.Sprintf(format, *v)
+}
+
+type dailySummaryResponse struct {
+	CalendarDate        string  `json:"calendarDate"`
+	TotalSteps          *int    `json:"totalSteps"`
+	DailyStepGoal       *int    `json:"dailyStepGoal"`
+	TotalDistanceMeters *int    `json:"totalDistanceMeters"`
+
+	MinHeartRate     *int `json:"minHeartRate"`
+	MaxHeartRate     *int `json:"maxHeartRate"`
+	RestingHeartRate *int `json:"restingHeartRate"`
+
+	AverageStressLevel *int   `json:"averageStressLevel"`
+	MaxStressLevel     *int   `json:"maxStressLevel"`
+	StressQualifier    string `json:"stressQualifier"`
+
+	BodyBatteryChargedValue    *int `json:"bodyBatteryChargedValue"`
+	BodyBatteryDrainedValue    *int `json:"bodyBatteryDrainedValue"`
+	BodyBatteryHighestValue    *int `json:"bodyBatteryHighestValue"`
+	BodyBatteryLowestValue     *int `json:"bodyBatteryLowestValue"`
+	BodyBatteryMostRecentValue *int `json:"bodyBatteryMostRecentValue"`
+}
+
+func (d dailySummaryResponse) CalendarDateOr(fallback string) string {
+	if d.CalendarDate != "" {
+		return d.CalendarDate
+	}
+	return fallback
+}
+
+func fetchDailySummary(ctx context.Context, c *client.Client, date string) (dailySummaryResponse, error) {
+	var resp dailySummaryResponse
+	q := url.Values{"calendarDate": {date}}
+	err := c.GetJSON(ctx, "/usersummary-service/usersummary/daily/", q, &resp)
+	return resp, err
+}
+
+type stepsSummary struct {
+	Date           string `json:"date"`
+	TotalSteps     *int   `json:"total_steps,omitempty"`
+	Goal           *int   `json:"goal,omitempty"`
+	DistanceMeters *int   `json:"distance_meters,omitempty"`
+}
+
+type stressSummary struct {
+	Date      string `json:"date"`
+	Average   *int   `json:"average,omitempty"`
+	Max       *int   `json:"max,omitempty"`
+	Qualifier string `json:"qualifier,omitempty"`
+}
+
+type bodyBatterySummary struct {
+	Date       string `json:"date"`
+	Highest    *int   `json:"highest,omitempty"`
+	Lowest     *int   `json:"lowest,omitempty"`
+	MostRecent *int   `json:"most_recent,omitempty"`
+	Charged    *int   `json:"charged,omitempty"`
+	Drained    *int   `json:"drained,omitempty"`
+}
+
+type heartRateSummary struct {
+	Date      string `json:"date"`
+	RestingHR *int   `json:"resting_hr,omitempty"`
+	MinHR     *int   `json:"min_hr,omitempty"`
+	MaxHR     *int   `json:"max_hr,omitempty"`
+}
+
+func formatMetersToKM(m *int) string {
+	if m == nil {
+		return "—"
+	}
+	return fmt.Sprintf("%.2f", float64(*m)/1000.0)
+}
+
+func orDash(s string) string {
+	if strings.TrimSpace(s) == "" {
+		return "—"
+	}
+	return s
 }
 
