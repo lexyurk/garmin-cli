@@ -53,6 +53,9 @@ garmin training hrv
 
 # Check auth status
 garmin auth status
+
+# Switch output to JSON (for scripts)
+garmin health sleep --format json
 ```
 
 ## Command Reference
@@ -96,6 +99,32 @@ Tokens stored in:
 ```
 ~/.config/garmin/tokens/<profile>/oauth1_token.json
 ~/.config/garmin/tokens/<profile>/oauth2_token.json
+```
+
+## Authentication notes (SSO, MFA)
+
+- `garmin auth login` uses Garmin SSO to obtain OAuth tokens for `connectapi.garmin.com`.
+- If your account requires MFA, you’ll be prompted for the code.
+  - For non-interactive usage, pass `--mfa-code <code>`.
+- Tokens are refreshed automatically when needed (OAuth2 is exchanged again via OAuth1, like the `garth` Python library).
+
+## Troubleshooting
+
+### `not authenticated`
+
+Run:
+
+```bash
+garmin auth login
+```
+
+### Stuck / expired tokens
+
+Try:
+
+```bash
+garmin auth logout
+garmin auth login
 ```
 
 ### Environment Variables
