@@ -1,20 +1,24 @@
 // Package output handles formatting CLI output in various formats.
-// Supports: JSON, table, human-readable.
+// Supports: Markdown (default), JSON, table, human-readable.
 package output
 
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
+	"sort"
+	"strings"
 )
 
 // Format represents the output format type.
 type Format string
 
 const (
-	FormatJSON  Format = "json"
-	FormatTable Format = "table"
-	FormatHuman Format = "human"
+	FormatMarkdown Format = "markdown"
+	FormatJSON     Format = "json"
+	FormatTable    Format = "table"
+	FormatHuman    Format = "human"
 )
 
 // JSON outputs data as formatted JSON to stdout.
@@ -22,6 +26,68 @@ func JSON(data any) error {
 	enc := json.NewEncoder(os.Stdout)
 	enc.SetIndent("", "  ")
 	return enc.Encode(data)
+}
+
+// Markdown writes Markdown text to stdout.
+func Markdown(text string) error {
+	_, err := io.WriteString(os.Stdout, ensureTrailingNewline(text))
+	return err
+}
+
+// MarkdownKV renders a stable key/value section.
+func MarkdownKV(title string, fields map[string]string) error {
+	var b strings.Builder
+	if title != "" {
+		b.WriteString("## ")
+		b.WriteString(title)
+		b.WriteString("\n\n")
+	}
+
+	keys := make([]string, 0, len(fields))
+	for k := range fields {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
+	for _, k := range keys {
+		v := fields[k]
+		b.WriteString("- **")
+		b.WriteString(escapeMarkdownInline(k))
+		b.WriteString("**: ")
+		b.WriteString(escapeMarkdownInline(v))
+		b.WriteString("\n")
+	}
+
+	b.WriteString("\n")
+	return Markdown(b.String())
+}
+
+// MarkdownTable renders a GitHub-flavored Markdown table.
+func MarkdownTable(headers []string, rows [][]string) error {
+	var b strings.Builder
+
+	writeRow := func(cols []string) {
+		b.WriteString("|")
+		for _, col := range cols {
+			b.WriteString(" ")
+			b.WriteString(escapeMarkdownInline(col))
+			b.WriteString(" |")
+		}
+		b.WriteString("\n")
+	}
+
+	writeRow(headers)
+	sep := make([]string, len(headers))
+	for i := range sep {
+		sep[i] = "---"
+	}
+	writeRow(sep)
+	for _, row := range rows {
+		writeRow(row)
+	}
+	b.WriteString("\n")
+
+	return Markdown(b.String())
 }
 
 // Table outputs data as an aligned table.
@@ -46,4 +112,21 @@ func Human(title string, fields map[string]string) {
 	for k, v := range fields {
 		fmt.Printf("  %s: %s\n", k, v)
 	}
+}
+
+func ensureTrailingNewline(s string) string {
+	if s == "" {
+		return "\n"
+	}
+	if strings.HasSuffix(s, "\n") {
+		return s
+	}
+	return s + "\n"
+}
+
+func escapeMarkdownInline(s string) string {
+	// Keep it simple: escape pipe and newlines for table cells.
+	s = strings.ReplaceAll(s, "\n", " ")
+	s = strings.ReplaceAll(s, "|", "\\|")
+	return s
 }
