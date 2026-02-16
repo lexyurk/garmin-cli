@@ -37,5 +37,8 @@ jobs:
       - name: Run tests
         run: make test
 
+      - name: Run tests (race)
+        run: go test -race ./...
+
       - name: Build
         run: make build
