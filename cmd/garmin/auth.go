@@ -70,12 +70,12 @@ func newAuthLoginCmd(opts *globalOptions) *cobra.Command {
 				if mfaCode != "" {
 					return mfaCode, nil
 				}
-				fmt.Fprint(os.Stderr, "MFA code: ")
-				line, err := bufio.NewReader(cmd.InOrStdin()).ReadString('\n')
-				if err != nil {
-					return "", err
+				// Try to read from /dev/tty so `--password-stdin` can coexist with interactive MFA.
+				if tty, err := os.Open("/dev/tty"); err == nil {
+					defer tty.Close()
+					return readLine("MFA code: ", tty)
 				}
-				return strings.TrimSpace(line), nil
+				return readLine("MFA code: ", cmd.InOrStdin())
 			}
 
 			session, err := auth.Login(ctx, cfgDir, email, password, prompt)
@@ -218,6 +218,15 @@ func orDefault(s, d string) string {
 		return d
 	}
 	return s
+}
+
+func readLine(prompt string, r io.Reader) (string, error) {
+	fmt.Fprint(os.Stderr, prompt)
+	line, err := bufio.NewReader(r).ReadString('\n')
+	if err != nil && !errors.Is(err, io.EOF) {
+		return "", err
+	}
+	return strings.TrimSpace(line), nil
 }
 
 
