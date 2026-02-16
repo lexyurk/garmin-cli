@@ -48,10 +48,10 @@ func renderNotAuthenticatedTo(w io.Writer, format, profile string) error {
 
 	switch format {
 	case "json":
-		return output.JSONTo(w, map[string]any{
-			"error":   "not_authenticated",
-			"message": "Run `garmin auth login`",
-			"profile": profile,
+		return output.JSONTo(w, notAuthenticatedJSON{
+			Error:   "not_authenticated",
+			Message: "Run `garmin auth login`",
+			Profile: profile,
 		})
 	default:
 		return renderKVTo(w, format, "Authentication", map[string]string{
@@ -66,5 +66,11 @@ func renderNotAuthenticatedString(format, profile string) string {
 	var b bytes.Buffer
 	_ = renderNotAuthenticatedTo(&b, format, profile)
 	return b.String()
+}
+
+type notAuthenticatedJSON struct {
+	Error   string `json:"error"`
+	Message string `json:"message"`
+	Profile string `json:"profile"`
 }
 
