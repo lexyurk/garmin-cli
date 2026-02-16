@@ -9,6 +9,7 @@ Fast, ergonomic Garmin Connect CLI written in Go.
 - **Fast** — native Go binary, instant startup
 - **All your Garmin data** — activities, sleep, HR, stress, body battery, training metrics
 - **LLM-friendly by default** — Markdown output that’s easy to paste into chats/prompts
+- **Multiple output formats** — markdown (default), tables, human, JSON
 - **Script-friendly when needed** — JSON output, composable with `jq`, pipes, standard Unix tools
 
 ## Installation
