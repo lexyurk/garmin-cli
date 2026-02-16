@@ -115,6 +115,8 @@ printf '%s' "$GARMIN_PASSWORD" | garmin auth login --email "$GARMIN_EMAIL" --pas
 | `training readiness`     | Training readiness score               |
 | `training vo2max`        | VO2 max estimates                      |
 | `training hrv`           | Heart rate variability                 |
+| `completion <shell>`     | Generate shell completion scripts      |
+| `version`                | Print version                          |
 
 ## Configuration
 
