@@ -26,6 +26,9 @@ jobs:
         run: |
           test -z "$(gofmt -l .)"
 
+      - name: Go vet
+        run: go vet ./...
+
       - name: Run tests
         run: make test
 
