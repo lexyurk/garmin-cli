@@ -22,8 +22,8 @@ type ListItem struct {
 	ActivityType   TypeInfo `json:"activityType"`
 	Distance       float64  `json:"distance"`
 	Duration       float64  `json:"duration"`
-	Calories       int      `json:"calories"`
-	AverageHR      int      `json:"averageHR"`
+	Calories       float64  `json:"calories"`
+	AverageHR      float64  `json:"averageHR"`
 }
 
 type Summary struct {
@@ -34,7 +34,7 @@ type Summary struct {
 	Name            string  `json:"name"`
 	DistanceMeters  float64 `json:"distance_meters"`
 	DurationSeconds float64 `json:"duration_seconds"`
-	Calories        int     `json:"calories,omitempty"`
+	Calories        int      `json:"calories,omitempty"`
 	AvgHR           int     `json:"avg_hr,omitempty"`
 }
 
@@ -132,8 +132,8 @@ func (a ListItem) ToSummary() Summary {
 		Name:            a.ActivityName,
 		DistanceMeters:  a.Distance,
 		DurationSeconds: a.Duration,
-		Calories:        a.Calories,
-		AvgHR:           a.AverageHR,
+		Calories:        int(a.Calories),
+		AvgHR:           int(a.AverageHR),
 	}
 }
 

@@ -132,6 +132,9 @@ func oauth1HTTPClient(ctx context.Context, consumer oauthConsumer, token *oauth1
 		ConsumerKey:    consumer.ConsumerKey,
 		ConsumerSecret: consumer.ConsumerSecret,
 	}
+	if token == nil {
+		token = &oauth1.Token{}
+	}
 	c := cfg.Client(ctx, token)
 	c.Timeout = defaultHTTPTimeout
 	return c
