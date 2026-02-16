@@ -180,6 +180,20 @@ func newAuthStatusCmd(opts *globalOptions) *cobra.Command {
 			var profile map[string]any
 			err = c.GetJSON(ctx, "/userprofile-service/socialProfile", nil, &profile)
 			if err != nil {
+				// If tokens are missing/invalid, treat as "not authenticated" (status command should be informational).
+				if errors.Is(err, auth.ErrNotAuthenticated) {
+					if opts.Format == "json" {
+						return output.JSON(authStatusJSON{
+							Authenticated: false,
+							Profile:       orDefault(opts.Profile, "default"),
+						})
+					}
+					return renderKV(opts.Format, "Authentication", map[string]string{
+						"status":  "not authenticated",
+						"message": "Run `garmin auth login`",
+						"profile": orDefault(opts.Profile, "default"),
+					})
+				}
 				return err
 			}
 
