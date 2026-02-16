@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/lexyurk/garmin-cli/internal/auth"
@@ -26,6 +27,9 @@ type Client struct {
 	configDir string
 	profile   string
 	session   *auth.Session
+
+	mu        sync.RWMutex
+	refreshMu sync.Mutex
 
 	refreshOAuth2 func(ctx context.Context, configDir string, oauth1 auth.OAuth1Token) (auth.OAuth2Token, error)
 	saveSession   func(configDir, profile string, s *auth.Session) error
@@ -92,7 +96,16 @@ func (c *Client) Do(ctx context.Context, method, path string, query url.Values, 
 		return nil, err
 	}
 	req.Header.Set("User-Agent", "com.garmin.android.apps.connectmobile")
-	req.Header.Set("Authorization", fmt.Sprintf("%s %s", stringsTitle(c.session.OAuth2.TokenType), c.session.OAuth2.AccessToken))
+
+	c.mu.RLock()
+	tokenType := ""
+	accessToken := ""
+	if c.session != nil {
+		tokenType = c.session.OAuth2.TokenType
+		accessToken = c.session.OAuth2.AccessToken
+	}
+	c.mu.RUnlock()
+	req.Header.Set("Authorization", fmt.Sprintf("%s %s", stringsTitle(tokenType), accessToken))
 	if contentType != "" {
 		req.Header.Set("Content-Type", contentType)
 	}
@@ -117,20 +130,45 @@ func (c *Client) GetJSON(ctx context.Context, path string, query url.Values, out
 }
 
 func (c *Client) ensureFreshOAuth2(ctx context.Context) error {
+	c.mu.RLock()
 	if c.session == nil {
+		c.mu.RUnlock()
 		return auth.ErrNotAuthenticated
 	}
-	if !c.session.OAuth2.Expired(time.Now()) {
+	expired := c.session.OAuth2.Expired(time.Now())
+	oauth1 := c.session.OAuth1
+	c.mu.RUnlock()
+	if !expired {
 		return nil
 	}
 
-	oauth2, err := c.refreshOAuth2(ctx, c.configDir, c.session.OAuth1)
+	// Only one goroutine should refresh at a time. Others will re-check once it completes.
+	c.refreshMu.Lock()
+	defer c.refreshMu.Unlock()
+
+	c.mu.RLock()
+	if c.session == nil {
+		c.mu.RUnlock()
+		return auth.ErrNotAuthenticated
+	}
+	expired = c.session.OAuth2.Expired(time.Now())
+	oauth1 = c.session.OAuth1
+	c.mu.RUnlock()
+	if !expired {
+		return nil
+	}
+
+	oauth2, err := c.refreshOAuth2(ctx, c.configDir, oauth1)
 	if err != nil {
 		return err
 	}
-	c.session.OAuth2 = oauth2
 
-	if err := c.saveSession(c.configDir, c.profile, c.session); err != nil {
+	c.mu.Lock()
+	c.session.OAuth2 = oauth2
+	snapshot := *c.session
+	c.mu.Unlock()
+
+	if err := c.saveSession(c.configDir, c.profile, &snapshot); err != nil {
 		return err
 	}
 	return nil
