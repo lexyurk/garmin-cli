@@ -94,6 +94,16 @@ func NewWithSession(configDir, profile string, session *auth.Session, opts Optio
 	}
 }
 
+// OAuth2ExpiresAt returns the OAuth2 token expiry time as a Unix timestamp.
+func (c *Client) OAuth2ExpiresAt() int64 {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	if c.session == nil {
+		return 0
+	}
+	return c.session.OAuth2.ExpiresAt
+}
+
 func (c *Client) logfSafe(format string, args ...any) {
 	if c.logf == nil {
 		return

@@ -42,9 +42,6 @@ func ResolveDates(opts RangeOptions, now time.Time) ([]string, error) {
 		return []string{d.Format(DateLayout)}, nil
 
 	case opts.Days > 0:
-		if opts.Days <= 0 {
-			return nil, errors.New("--days must be > 0")
-		}
 		start := today.AddDate(0, 0, -(opts.Days - 1))
 		return formatDateRange(start, today), nil
 

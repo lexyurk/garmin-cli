@@ -201,20 +201,19 @@ func newAuthStatusCmd(opts *globalOptions) *cobra.Command {
 			if v, ok := profile["displayName"].(string); ok {
 				displayName = v
 			}
+			expiresAt := c.OAuth2ExpiresAt()
 
 			if opts.Format == "json" {
 				// Keep it intentionally small; don't emit tokens.
-				sess, _ := auth.LoadSession(cfgDir, opts.Profile)
 				return output.JSONTo(cmd.OutOrStdout(), authStatusJSON{
 					Authenticated: true,
 					Profile:       orDefault(opts.Profile, "default"),
 					DisplayName:   displayName,
-					ExpiresAt:     sess.OAuth2.ExpiresAt,
+					ExpiresAt:     expiresAt,
 				})
 			}
 
-			sess, _ := auth.LoadSession(cfgDir, opts.Profile)
-			exp := time.Unix(sess.OAuth2.ExpiresAt, 0).Format(time.RFC3339)
+			exp := time.Unix(expiresAt, 0).Format(time.RFC3339)
 			return renderKVTo(cmd.OutOrStdout(), opts.Format, "Authentication", map[string]string{
 				"status":       "authenticated",
 				"profile":      orDefault(opts.Profile, "default"),

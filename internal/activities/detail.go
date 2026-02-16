@@ -1,5 +1,7 @@
 package activities
 
+import "github.com/lexyurk/garmin-cli/internal/convert"
+
 type DetailSummary struct {
 	ID              int64
 	Name            string
@@ -26,14 +28,14 @@ func SummarizeDetail(id int64, raw map[string]any) DetailSummary {
 		}
 	}
 
-	s.DistanceMeters = floatFromAny(raw["distance"])
-	s.DurationSeconds = floatFromAny(raw["duration"])
+	s.DistanceMeters = convert.FloatFromAny(raw["distance"])
+	s.DurationSeconds = convert.FloatFromAny(raw["duration"])
 	s.Calories = intFromAny(raw["calories"])
 	s.AvgHR = intFromAny(raw["averageHR"])
 	s.MaxHR = intFromAny(raw["maxHR"])
-	s.ElevationGain = floatFromAny(raw["elevationGain"])
-	s.VO2Max = floatFromAny(raw["vO2MaxValue"])
-	s.TrainingLoad = floatFromAny(raw["activityTrainingLoad"])
+	s.ElevationGain = convert.FloatFromAny(raw["elevationGain"])
+	s.VO2Max = convert.FloatFromAny(raw["vO2MaxValue"])
+	s.TrainingLoad = convert.FloatFromAny(raw["activityTrainingLoad"])
 	return s
 }
 
@@ -54,26 +56,13 @@ func ExtractSplits(raw map[string]any) []SplitSummary {
 	for _, item := range splitsAny {
 		m, _ := item.(map[string]any)
 		out = append(out, SplitSummary{
-			DistanceMeters:  floatFromAny(m["distance"]),
-			DurationSeconds: floatFromAny(m["duration"]),
+			DistanceMeters:  convert.FloatFromAny(m["distance"]),
+			DurationSeconds: convert.FloatFromAny(m["duration"]),
 			AverageHR:       intFromAny(m["averageHR"]),
 			MaxHR:           intFromAny(m["maxHR"]),
 		})
 	}
 	return out
-}
-
-func floatFromAny(v any) float64 {
-	switch t := v.(type) {
-	case float64:
-		return t
-	case int:
-		return float64(t)
-	case int64:
-		return float64(t)
-	default:
-		return 0
-	}
 }
 
 func intFromAny(v any) int {

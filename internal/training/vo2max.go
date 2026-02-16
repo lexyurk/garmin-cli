@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/lexyurk/garmin-cli/internal/client"
+	"github.com/lexyurk/garmin-cli/internal/convert"
 )
 
 type VO2Max struct {
@@ -18,20 +19,7 @@ func GetVO2Max(ctx context.Context, c *client.Client) (VO2Max, error) {
 	}
 	userData, _ := raw["userData"].(map[string]any)
 	return VO2Max{
-		Running: floatFromAny(userData["vo2MaxRunning"]),
-		Cycling: floatFromAny(userData["vo2MaxCycling"]),
+		Running: convert.FloatFromAny(userData["vo2MaxRunning"]),
+		Cycling: convert.FloatFromAny(userData["vo2MaxCycling"]),
 	}, nil
-}
-
-func floatFromAny(v any) float64 {
-	switch t := v.(type) {
-	case float64:
-		return t
-	case int:
-		return float64(t)
-	case int64:
-		return float64(t)
-	default:
-		return 0
-	}
 }
