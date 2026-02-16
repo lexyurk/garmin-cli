@@ -112,26 +112,100 @@ func MarkdownTableTo(w io.Writer, headers []string, rows [][]string) error {
 
 // Table outputs data as an aligned table.
 func Table(headers []string, rows [][]string) {
-	// TODO: implement aligned table output with configurable columns
-	for _, h := range headers {
-		fmt.Printf("%-20s", h)
+	_ = TableTo(os.Stdout, headers, rows)
+}
+
+// TableTo outputs data as an aligned table to w.
+func TableTo(w io.Writer, headers []string, rows [][]string) error {
+	if len(headers) == 0 {
+		return nil
 	}
-	fmt.Println()
+
+	widths := make([]int, len(headers))
+	for i, h := range headers {
+		widths[i] = len(h)
+	}
 	for _, row := range rows {
-		for _, col := range row {
-			fmt.Printf("%-20s", col)
+		for i := range widths {
+			if i >= len(row) {
+				continue
+			}
+			if l := len(row[i]); l > widths[i] {
+				widths[i] = l
+			}
 		}
-		fmt.Println()
 	}
+
+	writeRow := func(cols []string) error {
+		for i := range widths {
+			val := ""
+			if i < len(cols) {
+				val = cols[i]
+			}
+			if i == len(widths)-1 {
+				_, err := fmt.Fprintf(w, "%-*s", widths[i], val)
+				return err
+			}
+			if _, err := fmt.Fprintf(w, "%-*s  ", widths[i], val); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+
+	if err := writeRow(headers); err != nil {
+		return err
+	}
+	if _, err := io.WriteString(w, "\n"); err != nil {
+		return err
+	}
+
+	// separator
+	sep := make([]string, len(widths))
+	for i, w := range widths {
+		sep[i] = strings.Repeat("-", w)
+	}
+	if err := writeRow(sep); err != nil {
+		return err
+	}
+	if _, err := io.WriteString(w, "\n"); err != nil {
+		return err
+	}
+
+	for _, row := range rows {
+		if err := writeRow(row); err != nil {
+			return err
+		}
+		if _, err := io.WriteString(w, "\n"); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // Human outputs data in a human-readable format.
 func Human(title string, fields map[string]string) {
-	// TODO: implement colorized human-readable output
-	fmt.Printf("=== %s ===\n", title)
-	for k, v := range fields {
-		fmt.Printf("  %s: %s\n", k, v)
+	_ = HumanTo(os.Stdout, title, fields)
+}
+
+// HumanTo outputs data in a simple human-readable format to w.
+func HumanTo(w io.Writer, title string, fields map[string]string) error {
+	if title != "" {
+		if _, err := fmt.Fprintf(w, "=== %s ===\n", title); err != nil {
+			return err
+		}
 	}
+	keys := make([]string, 0, len(fields))
+	for k := range fields {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	for _, k := range keys {
+		if _, err := fmt.Fprintf(w, "  %s: %s\n", k, fields[k]); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func ensureTrailingNewline(s string) string {
