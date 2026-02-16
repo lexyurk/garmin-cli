@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 	"time"
@@ -33,6 +34,7 @@ func NewAuthCmd(opts *globalOptions) *cobra.Command {
 func newAuthLoginCmd(opts *globalOptions) *cobra.Command {
 	var email string
 	var password string
+	var passwordStdin bool
 	var mfaCode string
 
 	cmd := &cobra.Command{
@@ -42,11 +44,20 @@ func newAuthLoginCmd(opts *globalOptions) *cobra.Command {
 			if email == "" {
 				email = os.Getenv("GARMIN_EMAIL")
 			}
-			if password == "" {
+			if passwordStdin {
+				if strings.TrimSpace(password) != "" {
+					return fmt.Errorf("use either --password or --password-stdin (not both)")
+				}
+				b, err := io.ReadAll(cmd.InOrStdin())
+				if err != nil {
+					return err
+				}
+				password = strings.TrimSpace(string(b))
+			} else if password == "" {
 				password = os.Getenv("GARMIN_PASSWORD")
 			}
 			if email == "" || password == "" {
-				return fmt.Errorf("missing credentials: provide --email/--password or set GARMIN_EMAIL/GARMIN_PASSWORD")
+				return fmt.Errorf("missing credentials: provide --email/--password, --password-stdin, or set GARMIN_EMAIL/GARMIN_PASSWORD")
 			}
 
 			cfgDir, err := config.ResolveConfigDir(opts.ConfigDir)
@@ -93,6 +104,7 @@ func newAuthLoginCmd(opts *globalOptions) *cobra.Command {
 
 	cmd.Flags().StringVar(&email, "email", "", "Garmin Connect email")
 	cmd.Flags().StringVar(&password, "password", "", "Garmin Connect password")
+	cmd.Flags().BoolVar(&passwordStdin, "password-stdin", false, "Read Garmin Connect password from stdin")
 	cmd.Flags().StringVar(&mfaCode, "mfa-code", "", "MFA code (optional; if not provided, you will be prompted)")
 
 	return cmd
