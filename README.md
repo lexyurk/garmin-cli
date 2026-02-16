@@ -20,6 +20,9 @@ Fast, ergonomic Garmin Connect CLI written in Go.
 git clone https://github.com/lexyurk/garmin-cli
 cd garmin-cli
 make install
+
+# Ensure $GOPATH/bin is on your PATH
+export PATH="$(go env GOPATH)/bin:$PATH"
 ```
 
 ### Go install
