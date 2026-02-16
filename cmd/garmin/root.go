@@ -27,6 +27,12 @@ func NewRootCmd(version string) *cobra.Command {
 		SilenceUsage:  true,
 		SilenceErrors: true,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+			// Non-runnable parent commands (e.g., `garmin`, `garmin health`) effectively show help.
+			// They should not require a valid config file.
+			if !cmd.Runnable() {
+				return nil
+			}
+
 			// Meta commands should always work, even with broken config.
 			switch cmd.Name() {
 			case "completion", "help", "version":

@@ -118,6 +118,46 @@ func TestRoot_VerboseQuietAreMutuallyExclusive(t *testing.T) {
 	}
 }
 
+func TestRoot_NoArgsWorksWithBrokenConfig(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "config.toml"), []byte("this is not valid toml\n"), 0o600); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+
+	cmd := NewRootCmd("dev")
+	var out bytes.Buffer
+	cmd.SetOut(&out)
+	cmd.SetErr(&out)
+	cmd.SetArgs([]string{"--config-dir", dir})
+
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("expected root help to work with broken config, got: %v\noutput:\n%s", err, out.String())
+	}
+	if !strings.Contains(out.String(), "Fast, ergonomic Garmin Connect CLI") {
+		t.Fatalf("expected root help output, got:\n%s", out.String())
+	}
+}
+
+func TestRoot_GroupCommandWorksWithBrokenConfig(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "config.toml"), []byte("this is not valid toml\n"), 0o600); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+
+	cmd := NewRootCmd("dev")
+	var out bytes.Buffer
+	cmd.SetOut(&out)
+	cmd.SetErr(&out)
+	cmd.SetArgs([]string{"--config-dir", dir, "health"})
+
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("expected group help to work with broken config, got: %v\noutput:\n%s", err, out.String())
+	}
+	if !strings.Contains(out.String(), "Health data") || !strings.Contains(out.String(), "sleep") {
+		t.Fatalf("expected health help output, got:\n%s", out.String())
+	}
+}
+
 func TestRoot_CompletionWorksWithBrokenConfig(t *testing.T) {
 	dir := t.TempDir()
 	if err := os.WriteFile(filepath.Join(dir, "config.toml"), []byte("this is not valid toml\n"), 0o600); err != nil {
