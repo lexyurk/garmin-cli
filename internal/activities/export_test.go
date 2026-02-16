@@ -26,6 +26,9 @@ func TestExport_DownloadsToWriter(t *testing.T) {
 		if got := r.Header.Get("Accept"); got != "*/*" {
 			t.Fatalf("unexpected Accept header: %q", got)
 		}
+		if got := r.Header.Get("DI-Backend"); got != "connectapi.garmin.com" {
+			t.Fatalf("unexpected DI-Backend header: %q", got)
+		}
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("file-contents"))
 	}))

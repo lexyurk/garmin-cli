@@ -39,7 +39,19 @@ func Export(ctx context.Context, c *client.Client, activityID int64, exportType 
 		return fmt.Errorf("unsupported export type %q", exportType)
 	}
 
-	resp, err := c.DoRaw(ctx, http.MethodGet, fmt.Sprintf("/download-service/export/%s/activity/%d", seg, activityID), nil, nil, "", "*/*")
+	// Some Garmin endpoints behind connect.garmin.com require DI-Backend; it is harmless on connectapi.garmin.com.
+	resp, err := c.DoRawWithHeaders(
+		ctx,
+		http.MethodGet,
+		fmt.Sprintf("/download-service/export/%s/activity/%d", seg, activityID),
+		nil,
+		nil,
+		"",
+		"*/*",
+		map[string]string{
+			"DI-Backend": "connectapi.garmin.com",
+		},
+	)
 	if err != nil {
 		return err
 	}

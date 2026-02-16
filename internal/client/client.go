@@ -100,6 +100,14 @@ func (c *Client) Do(ctx context.Context, method, path string, query url.Values, 
 // DoRaw performs an authenticated request to the Connect API with a caller-provided Accept header.
 // If accept is empty, "application/json" is used.
 func (c *Client) DoRaw(ctx context.Context, method, path string, query url.Values, body io.Reader, contentType, accept string) (*http.Response, error) {
+	return c.DoRawWithHeaders(ctx, method, path, query, body, contentType, accept, nil)
+}
+
+// DoRawWithHeaders performs an authenticated request to the Connect API with a caller-provided
+// Accept header and additional headers.
+//
+// extraHeaders may override headers set by the client (including Accept).
+func (c *Client) DoRawWithHeaders(ctx context.Context, method, path string, query url.Values, body io.Reader, contentType, accept string, extraHeaders map[string]string) (*http.Response, error) {
 	if err := c.ensureFreshOAuth2(ctx); err != nil {
 		return nil, err
 	}
@@ -130,6 +138,13 @@ func (c *Client) DoRaw(ctx context.Context, method, path string, query url.Value
 		accept = "application/json"
 	}
 	req.Header.Set("Accept", accept)
+
+	for k, v := range extraHeaders {
+		if strings.TrimSpace(k) == "" {
+			continue
+		}
+		req.Header.Set(k, v)
+	}
 
 	return c.doWithRetry(req)
 }
