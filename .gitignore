@@ -1,0 +1,32 @@
+# Reference project
+_reference/
+
+# Binaries
+garmin-cli
+/bin/
+/dist/
+
+# Go
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+go.work
+go.work.sum
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Config (local dev)
+*.local.toml
