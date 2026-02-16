@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"sync"
 )
 
@@ -66,8 +67,13 @@ func mapDatesConcurrently[T any](
 	out := make([]T, len(dates))
 	var firstErr error
 	for r := range resCh {
-		if r.err != nil && firstErr == nil {
-			firstErr = r.err
+		if r.err != nil {
+			if firstErr == nil {
+				firstErr = r.err
+			} else if isContextError(firstErr) && !isContextError(r.err) {
+				// Prefer the real/root error over context cancellation.
+				firstErr = r.err
+			}
 		}
 		out[r.idx] = r.val
 	}
@@ -76,5 +82,9 @@ func mapDatesConcurrently[T any](
 		return nil, firstErr
 	}
 	return out, nil
+}
+
+func isContextError(err error) bool {
+	return errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded)
 }
 
