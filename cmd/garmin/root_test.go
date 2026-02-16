@@ -102,6 +102,22 @@ func TestRoot_FlagsOverrideEnv(t *testing.T) {
 	}
 }
 
+func TestRoot_VerboseQuietAreMutuallyExclusive(t *testing.T) {
+	cmd := NewRootCmd("dev")
+	var out bytes.Buffer
+	cmd.SetOut(&out)
+	cmd.SetErr(&out)
+	cmd.SetArgs([]string{"--verbose", "--quiet", "auth", "status"})
+
+	err := cmd.Execute()
+	if err == nil {
+		t.Fatalf("expected error")
+	}
+	if !strings.Contains(err.Error(), "verbose") || !strings.Contains(err.Error(), "quiet") {
+		t.Fatalf("expected mutual exclusion error, got: %v", err)
+	}
+}
+
 func TestRoot_CompletionWorksWithBrokenConfig(t *testing.T) {
 	dir := t.TempDir()
 	if err := os.WriteFile(filepath.Join(dir, "config.toml"), []byte("this is not valid toml\n"), 0o600); err != nil {

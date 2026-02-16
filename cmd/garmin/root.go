@@ -38,6 +38,10 @@ func NewRootCmd(version string) *cobra.Command {
 				return nil
 			}
 
+			if opts.Verbose && opts.Quiet {
+				return fmt.Errorf("use either --verbose or --quiet (not both)")
+			}
+
 			// Env defaults (no network calls; safe for `--help`).
 			formatFlag := cmd.Flags().Changed("format")
 			profileFlag := cmd.Flags().Changed("profile")
