@@ -154,14 +154,10 @@ func newTrainingReadinessCmd(opts *globalOptions) *cobra.Command {
 }
 
 func newTrainingVo2maxCmd(opts *globalOptions) *cobra.Command {
-	var date string
-
 	cmd := &cobra.Command{
 		Use:   "vo2max",
 		Short: "VO2 max estimates",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			_ = date // kept for backwards-compat; VO2 max is not daily.
-
 			c, err := newAuthedClient(cmd, opts)
 			if err != nil {
 				return err
@@ -185,8 +181,6 @@ func newTrainingVo2maxCmd(opts *globalOptions) *cobra.Command {
 			})
 		},
 	}
-	cmd.Flags().StringVar(&date, "date", "", "Date (YYYY-MM-DD, default: today)")
-	_ = cmd.Flags().MarkDeprecated("date", "VO2 max is not daily; this flag will be removed")
 	return cmd
 }
 
