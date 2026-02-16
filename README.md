@@ -144,6 +144,8 @@ Tokens stored in:
 | `GARMIN_CONFIG_DIR` | Overrides config directory (same as `--config-dir`) |
 | `GARMIN_PROFILE` | Default profile (overridden by `--profile`) |
 | `GARMIN_FORMAT` | Default output format (overridden by `--format`) |
+| `GARMIN_EMAIL` | Default email for `garmin auth login` (overridden by `--email`) |
+| `GARMIN_PASSWORD` | Default password for `garmin auth login` (overridden by `--password` / `--password-stdin`) |
 
 ## Authentication notes (SSO, MFA)
 
