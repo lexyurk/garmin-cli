@@ -3,11 +3,10 @@ package main
 import (
 	"context"
 	"fmt"
-	"net/url"
 	"strconv"
-	"strings"
 	"time"
 
+	garminactivities "github.com/lexyurk/garmin-cli/internal/activities"
 	"github.com/lexyurk/garmin-cli/internal/client"
 	"github.com/lexyurk/garmin-cli/internal/config"
 	"github.com/lexyurk/garmin-cli/internal/output"
@@ -53,50 +52,9 @@ func newActivitiesListCmd(opts *globalOptions) *cobra.Command {
 			}
 
 			ctx := context.Background()
-
-			var out []activitySummary
-			start := 0
-			pageSize := 50
-			if limit < pageSize {
-				pageSize = limit
-			}
-
-			for len(out) < limit {
-				var page []activityListItem
-				q := url.Values{
-					"limit": {strconv.Itoa(pageSize)},
-					"start": {strconv.Itoa(start)},
-				}
-				if err := c.GetJSON(ctx, "/activitylist-service/activities/search/activities", q, &page); err != nil {
-					return err
-				}
-				if len(page) == 0 {
-					break
-				}
-
-				for _, item := range page {
-					s := item.toSummary()
-					if !passesActivityFilters(s, after, before, activityType) {
-						continue
-					}
-					out = append(out, s)
-					if len(out) >= limit {
-						break
-					}
-				}
-
-				// Stop early when we paged beyond the requested date range.
-				if after != "" {
-					oldest := page[len(page)-1].startDate()
-					if oldest != "" && oldest < after {
-						break
-					}
-				}
-
-				start += len(page)
-				if len(page) < pageSize {
-					break
-				}
+			out, err := garminactivities.List(ctx, c, limit, after, before, activityType)
+			if err != nil {
+				return err
 			}
 
 			if opts.Format == "json" {
@@ -156,8 +114,8 @@ func newActivitiesGetCmd(opts *globalOptions) *cobra.Command {
 
 			ctx := context.Background()
 
-			var raw map[string]any
-			if err := c.GetJSON(ctx, fmt.Sprintf("/activity-service/activity/%d", id), nil, &raw); err != nil {
+			raw, err := garminactivities.GetRaw(ctx, c, id)
+			if err != nil {
 				return err
 			}
 
@@ -165,7 +123,7 @@ func newActivitiesGetCmd(opts *globalOptions) *cobra.Command {
 				return output.JSON(raw)
 			}
 
-			s := summarizeActivityDetail(id, raw)
+			s := garminactivities.SummarizeDetail(id, raw)
 			fields := map[string]string{
 				"id":        fmt.Sprintf("%d", s.ID),
 				"date_time": s.StartTimeLocal,
@@ -213,38 +171,25 @@ func newActivitiesSplitsCmd(opts *globalOptions) *cobra.Command {
 			}
 
 			ctx := context.Background()
-			var raw map[string]any
-			if err := c.GetJSON(ctx, fmt.Sprintf("/activity-service/activity/%d", id), nil, &raw); err != nil {
+			raw, err := garminactivities.GetRaw(ctx, c, id)
+			if err != nil {
 				return err
 			}
 
-			splitsAny, ok := raw["splitSummaries"].([]any)
-			if !ok {
-				splitsAny = []any{}
-			}
-
 			if opts.Format == "json" {
-				return output.JSON(map[string]any{
-					"activity_id": id,
-					"splits":      splitsAny,
-				})
+				return output.JSON(map[string]any{"activity_id": id, "splits": raw["splitSummaries"]})
 			}
 
-			rows := make([][]string, 0, len(splitsAny))
-			for i, item := range splitsAny {
-				m, _ := item.(map[string]any)
-				dist := floatFromAny(m["distance"])
-				dur := floatFromAny(m["duration"])
-				avgHR := intFromAny(m["averageHR"])
-				maxHR := intFromAny(m["maxHR"])
-
+			splits := garminactivities.ExtractSplits(raw)
+			rows := make([][]string, 0, len(splits))
+			for i, s := range splits {
 				rows = append(rows, []string{
 					fmt.Sprintf("%d", i+1),
-					formatDistanceKM(dist),
-					formatDurationSecondsFloat(dur),
-					formatPaceMinPerKM(dist, dur),
-					formatMaybeInt0(avgHR),
-					formatMaybeInt0(maxHR),
+					formatDistanceKM(s.DistanceMeters),
+					formatDurationSecondsFloat(s.DurationSeconds),
+					formatPaceMinPerKM(s.DistanceMeters, s.DurationSeconds),
+					formatMaybeInt0(s.AverageHR),
+					formatMaybeInt0(s.MaxHR),
 				})
 			}
 
@@ -262,106 +207,6 @@ func newActivitiesSplitsCmd(opts *globalOptions) *cobra.Command {
 		},
 	}
 	return cmd
-}
-
-type activityTypeInfo struct {
-	TypeKey string `json:"typeKey"`
-}
-
-type activityListItem struct {
-	ActivityID     int64            `json:"activityId"`
-	ActivityName   string           `json:"activityName"`
-	StartTimeLocal string           `json:"startTimeLocal"`
-	ActivityType   activityTypeInfo `json:"activityType"`
-	Distance       float64          `json:"distance"`
-	Duration       float64          `json:"duration"`
-	Calories       int              `json:"calories"`
-	AverageHR      int              `json:"averageHR"`
-}
-
-type activitySummary struct {
-	ID             int64   `json:"id"`
-	Date           string  `json:"date"`
-	Type           string  `json:"type"`
-	Name           string  `json:"name"`
-	DistanceMeters float64 `json:"distance_meters"`
-	DurationSeconds float64 `json:"duration_seconds"`
-	Calories       int     `json:"calories,omitempty"`
-	AvgHR          int     `json:"avg_hr,omitempty"`
-}
-
-func (a activityListItem) startDate() string {
-	if len(a.StartTimeLocal) >= 10 {
-		return a.StartTimeLocal[:10]
-	}
-	return ""
-}
-
-func (a activityListItem) toSummary() activitySummary {
-	return activitySummary{
-		ID:              a.ActivityID,
-		Date:            a.startDate(),
-		Type:            a.ActivityType.TypeKey,
-		Name:            a.ActivityName,
-		DistanceMeters:  a.Distance,
-		DurationSeconds: a.Duration,
-		Calories:        a.Calories,
-		AvgHR:           a.AverageHR,
-	}
-}
-
-func passesActivityFilters(a activitySummary, after, before, activityType string) bool {
-	if after != "" && a.Date != "" && a.Date < after {
-		return false
-	}
-	if before != "" && a.Date != "" && a.Date > before {
-		return false
-	}
-	if strings.TrimSpace(activityType) != "" {
-		t := strings.ToLower(strings.TrimSpace(activityType))
-		typ := strings.ToLower(a.Type)
-		if typ != t && !strings.Contains(typ, t) {
-			return false
-		}
-	}
-	return true
-}
-
-type activityDetailSummary struct {
-	ID             int64
-	Name           string
-	Type           string
-	StartTimeLocal string
-	DistanceMeters float64
-	DurationSeconds float64
-	Calories       int
-	AvgHR          int
-	MaxHR          int
-	ElevationGain  float64
-	VO2Max         float64
-	TrainingLoad   float64
-}
-
-func summarizeActivityDetail(id int64, raw map[string]any) activityDetailSummary {
-	s := activityDetailSummary{ID: id}
-	s.Name, _ = raw["activityName"].(string)
-	s.StartTimeLocal, _ = raw["startTimeLocal"].(string)
-
-	if at, ok := raw["activityType"].(map[string]any); ok {
-		if tk, ok := at["typeKey"].(string); ok {
-			s.Type = tk
-		}
-	}
-	s.DistanceMeters = floatFromAny(raw["distance"])
-	s.DurationSeconds = floatFromAny(raw["duration"])
-	s.Calories = intFromAny(raw["calories"])
-	s.AvgHR = intFromAny(raw["averageHR"])
-	s.MaxHR = intFromAny(raw["maxHR"])
-	s.ElevationGain = floatFromAny(raw["elevationGain"])
-	s.VO2Max = floatFromAny(raw["vO2MaxValue"])
-	s.TrainingLoad = floatFromAny(raw["activityTrainingLoad"])
-
-	return s
 }
 
 func floatFromAny(v any) float64 {
