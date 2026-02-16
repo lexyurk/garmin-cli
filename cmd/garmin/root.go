@@ -24,6 +24,7 @@ func NewRootCmd(version string) *cobra.Command {
 		Short: "Garmin Connect from your terminal",
 		Long:  "Fast, ergonomic Garmin Connect CLI. Pipe it, script it, automate it.",
 		SilenceUsage: true,
+		SilenceErrors: true,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			// Env defaults (no network calls; safe for `--help`).
 			if !cmd.Flags().Changed("format") {
