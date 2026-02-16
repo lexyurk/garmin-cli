@@ -1,8 +1,11 @@
 package main
 
 import (
+	"bytes"
 	"strings"
 	"testing"
+
+	"github.com/spf13/cobra"
 )
 
 func TestRenderNotAuthenticatedString_Markdown(t *testing.T) {
@@ -42,5 +45,31 @@ func TestRenderNotAuthenticatedString_Human(t *testing.T) {
 	}
 	if !strings.Contains(got, "status: not authenticated") {
 		t.Fatalf("expected status, got: %q", got)
+	}
+}
+
+func TestClientOptionsForCmd_VerboseWritesToStderr(t *testing.T) {
+	cmd := &cobra.Command{}
+	var stderr bytes.Buffer
+	cmd.SetErr(&stderr)
+
+	opts := &globalOptions{Verbose: true, Quiet: false}
+	copts := clientOptionsForCmd(cmd, opts)
+	if copts.Logf == nil {
+		t.Fatalf("expected Logf to be set when verbose=true")
+	}
+
+	copts.Logf("hello %s", "world")
+	if !strings.Contains(stderr.String(), "garmin verbose: hello world") {
+		t.Fatalf("expected log to go to stderr, got:\n%s", stderr.String())
+	}
+}
+
+func TestClientOptionsForCmd_QuietDisablesVerbose(t *testing.T) {
+	cmd := &cobra.Command{}
+	opts := &globalOptions{Verbose: true, Quiet: true}
+	copts := clientOptionsForCmd(cmd, opts)
+	if copts.Logf != nil {
+		t.Fatalf("expected Logf to be nil when quiet=true")
 	}
 }
