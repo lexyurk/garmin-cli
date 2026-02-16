@@ -129,3 +129,13 @@ func TestRenderKVTo_Table_SortsKeys(t *testing.T) {
 		t.Fatalf("expected sorted keys, got:\n%s", got)
 	}
 }
+
+func TestRenderKVTo_TblAlias(t *testing.T) {
+	var b bytes.Buffer
+	if err := RenderKVTo(&b, "tbl", "ignored", map[string]string{"a": "1"}); err != nil {
+		t.Fatalf("unexpected err: %v", err)
+	}
+	if !strings.Contains(b.String(), "field") || !strings.Contains(b.String(), "value") {
+		t.Fatalf("expected table output, got:\n%s", b.String())
+	}
+}

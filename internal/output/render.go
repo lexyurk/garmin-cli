@@ -13,7 +13,7 @@ func RenderKVTo(w io.Writer, format, title string, fields map[string]string) err
 	switch strings.ToLower(strings.TrimSpace(format)) {
 	case "human":
 		return HumanTo(w, title, fields)
-	case "table":
+	case "table", "tbl":
 		keys := make([]string, 0, len(fields))
 		for k := range fields {
 			keys = append(keys, k)
@@ -36,7 +36,7 @@ func RenderKVTo(w io.Writer, format, title string, fields map[string]string) err
 // JSON rendering is intentionally not handled here (call JSONTo directly).
 func RenderTableTo(w io.Writer, format string, headers []string, rows [][]string) error {
 	switch strings.ToLower(strings.TrimSpace(format)) {
-	case "table", "human":
+	case "table", "tbl", "human":
 		return TableTo(w, headers, rows)
 	case "markdown", "md", "":
 		return MarkdownTableTo(w, headers, rows)
