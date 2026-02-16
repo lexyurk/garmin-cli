@@ -55,3 +55,33 @@ func TestMarkdownTableTo_EscapesPipesAndNewlines(t *testing.T) {
 	}
 }
 
+func TestHumanTo_SortsKeys(t *testing.T) {
+	var b bytes.Buffer
+	if err := HumanTo(&b, "Title", map[string]string{"b": "2", "a": "1"}); err != nil {
+		t.Fatalf("unexpected err: %v", err)
+	}
+	got := b.String()
+	aIdx := strings.Index(got, "a: 1")
+	bIdx := strings.Index(got, "b: 2")
+	if aIdx == -1 || bIdx == -1 {
+		t.Fatalf("expected fields in output, got:\n%s", got)
+	}
+	if aIdx > bIdx {
+		t.Fatalf("expected sorted keys, got:\n%s", got)
+	}
+}
+
+func TestTableTo_WritesSeparator(t *testing.T) {
+	var b bytes.Buffer
+	if err := TableTo(&b, []string{"h1", "h2"}, [][]string{{"a", "bb"}}); err != nil {
+		t.Fatalf("unexpected err: %v", err)
+	}
+	got := b.String()
+	if !strings.Contains(got, "h1") || !strings.Contains(got, "h2") {
+		t.Fatalf("expected headers, got:\n%s", got)
+	}
+	if !strings.Contains(got, "--") {
+		t.Fatalf("expected separator line, got:\n%s", got)
+	}
+}
+
