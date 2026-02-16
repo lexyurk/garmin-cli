@@ -82,8 +82,8 @@ func newActivitiesListCmd(opts *globalOptions) *cobra.Command {
 	}
 
 	cmd.Flags().IntVar(&limit, "limit", 20, "Number of activities to return")
-	cmd.Flags().StringVar(&after, "after", "", "Activities after date (YYYY-MM-DD)")
-	cmd.Flags().StringVar(&before, "before", "", "Activities before date (YYYY-MM-DD)")
+	cmd.Flags().StringVar(&after, "after", "", "Activities on/after date (YYYY-MM-DD, inclusive)")
+	cmd.Flags().StringVar(&before, "before", "", "Activities on/before date (YYYY-MM-DD, inclusive)")
 	cmd.Flags().StringVar(&from, "from", "", "Start date (YYYY-MM-DD, inclusive)")
 	cmd.Flags().StringVar(&to, "to", "", "End date (YYYY-MM-DD, inclusive)")
 	cmd.Flags().IntVar(&days, "days", 0, "Shortcut: last N days (ending today)")
