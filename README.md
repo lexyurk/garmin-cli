@@ -97,7 +97,7 @@ printf '%s' "$GARMIN_PASSWORD" | garmin auth login --email "$GARMIN_EMAIL" --pas
 | `--format`  | `-f`  | Output format: markdown, table, human, json |
 | `--verbose` | `-v`  | Verbose output (HTTP request logs to stderr) |
 | `--quiet`   | `-q`  | Suppress non-essential output            |
-| `--config-dir` | `-c` | Config directory (tokens, settings)   |
+| `--config-dir` | `-c` | Config directory (tokens, settings) (deprecated alias: `--config`) |
 | `--profile` | `-p`  | Named profile to use                     |
 
 ### Commands
