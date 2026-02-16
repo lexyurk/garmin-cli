@@ -3,12 +3,12 @@ package main
 import (
 	"context"
 	"fmt"
-	"net/url"
 	"strings"
 	"time"
 
 	"github.com/lexyurk/garmin-cli/internal/client"
 	"github.com/lexyurk/garmin-cli/internal/config"
+	garminhealth "github.com/lexyurk/garmin-cli/internal/health"
 	"github.com/lexyurk/garmin-cli/internal/output"
 	"github.com/lexyurk/garmin-cli/internal/timeutil"
 	"github.com/spf13/cobra"
@@ -62,14 +62,13 @@ func newHealthSleepCmd(opts *globalOptions) *cobra.Command {
 			}
 
 			ctx := context.Background()
-			results := make([]sleepSummary, 0, len(dates))
+			results := make([]garminhealth.SleepSummary, 0, len(dates))
 			for _, day := range dates {
-				var resp sleepDailyResponse
-				q := url.Values{"date": {day}}
-				if err := c.GetJSON(ctx, "/sleep-service/sleep/dailySleepData", q, &resp); err != nil {
+				s, err := garminhealth.GetSleep(ctx, c, day)
+				if err != nil {
 					return err
 				}
-				results = append(results, resp.toSummary(day))
+				results = append(results, s)
 			}
 
 			if opts.Format == "json" {
@@ -144,7 +143,7 @@ func newHealthHeartRateCmd(opts *globalOptions) *cobra.Command {
 			ctx := context.Background()
 			out := make([]heartRateSummary, 0, len(dates))
 			for _, d := range dates {
-				s, err := fetchDailySummary(ctx, c, d)
+				s, err := garminhealth.GetDailySummary(ctx, c, d)
 				if err != nil {
 					return err
 				}
@@ -213,7 +212,7 @@ func newHealthStepsCmd(opts *globalOptions) *cobra.Command {
 			ctx := context.Background()
 			out := make([]stepsSummary, 0, len(dates))
 			for _, d := range dates {
-				s, err := fetchDailySummary(ctx, c, d)
+				s, err := garminhealth.GetDailySummary(ctx, c, d)
 				if err != nil {
 					return err
 				}
@@ -282,7 +281,7 @@ func newHealthStressCmd(opts *globalOptions) *cobra.Command {
 			ctx := context.Background()
 			out := make([]stressSummary, 0, len(dates))
 			for _, d := range dates {
-				s, err := fetchDailySummary(ctx, c, d)
+				s, err := garminhealth.GetDailySummary(ctx, c, d)
 				if err != nil {
 					return err
 				}
@@ -351,7 +350,7 @@ func newHealthBodyBatteryCmd(opts *globalOptions) *cobra.Command {
 			ctx := context.Background()
 			out := make([]bodyBatterySummary, 0, len(dates))
 			for _, d := range dates {
-				s, err := fetchDailySummary(ctx, c, d)
+				s, err := garminhealth.GetDailySummary(ctx, c, d)
 				if err != nil {
 					return err
 				}
@@ -398,61 +397,6 @@ func newHealthBodyBatteryCmd(opts *globalOptions) *cobra.Command {
 	return cmd
 }
 
-type sleepDailyResponse struct {
-	DailySleepDTO sleepDailyDTO `json:"dailySleepDTO"`
-}
-
-type sleepDailyDTO struct {
-	CalendarDate            string       `json:"calendarDate"`
-	SleepTimeSeconds        *int         `json:"sleepTimeSeconds"`
-	DeepSleepSeconds        *int         `json:"deepSleepSeconds"`
-	LightSleepSeconds       *int         `json:"lightSleepSeconds"`
-	RemSleepSeconds         *int         `json:"remSleepSeconds"`
-	AwakeSleepSeconds       *int         `json:"awakeSleepSeconds"`
-	AverageSpO2Value        *float64     `json:"averageSpO2Value"`
-	AverageRespirationValue *float64     `json:"averageRespirationValue"`
-	SleepScores             sleepScores  `json:"sleepScores"`
-}
-
-type sleepScores struct {
-	Overall sleepScoreOverall `json:"overall"`
-}
-
-type sleepScoreOverall struct {
-	Value        *int   `json:"value"`
-	QualifierKey string `json:"qualifierKey"`
-}
-
-type sleepSummary struct {
-	Date             string   `json:"date"`
-	Score            *int     `json:"score,omitempty"`
-	TotalSleepSeconds *int    `json:"total_sleep_seconds,omitempty"`
-	DeepSeconds      *int     `json:"deep_seconds,omitempty"`
-	LightSeconds     *int     `json:"light_seconds,omitempty"`
-	RemSeconds       *int     `json:"rem_seconds,omitempty"`
-	AwakeSeconds     *int     `json:"awake_seconds,omitempty"`
-	AvgSpO2          *float64 `json:"avg_spo2,omitempty"`
-	AvgRespiration   *float64 `json:"avg_respiration,omitempty"`
-}
-
-func (r sleepDailyResponse) toSummary(fallbackDate string) sleepSummary {
-	date := r.DailySleepDTO.CalendarDate
-	if date == "" {
-		date = fallbackDate
-	}
-	return sleepSummary{
-		Date:              date,
-		Score:             r.DailySleepDTO.SleepScores.Overall.Value,
-		TotalSleepSeconds: r.DailySleepDTO.SleepTimeSeconds,
-		DeepSeconds:       r.DailySleepDTO.DeepSleepSeconds,
-		LightSeconds:      r.DailySleepDTO.LightSleepSeconds,
-		RemSeconds:        r.DailySleepDTO.RemSleepSeconds,
-		AwakeSeconds:      r.DailySleepDTO.AwakeSleepSeconds,
-		AvgSpO2:           r.DailySleepDTO.AverageSpO2Value,
-		AvgRespiration:    r.DailySleepDTO.AverageRespirationValue,
-	}
-}
-
 func formatDurationSeconds(sec *int) string {
 	if sec == nil {
 		return "—"
@@ -479,41 +423,6 @@ func formatMaybeFloat(v *float64, decimals int) string {
 	}
 	format := fmt.Sprintf("%%.%df", decimals)
 	return fmt.Sprintf(format, *v)
-}
-
-type dailySummaryResponse struct {
-	CalendarDate        string  `json:"calendarDate"`
-	TotalSteps          *int    `json:"totalSteps"`
-	DailyStepGoal       *int    `json:"dailyStepGoal"`
-	TotalDistanceMeters *int    `json:"totalDistanceMeters"`
-
-	MinHeartRate     *int `json:"minHeartRate"`
-	MaxHeartRate     *int `json:"maxHeartRate"`
-	RestingHeartRate *int `json:"restingHeartRate"`
-
-	AverageStressLevel *int   `json:"averageStressLevel"`
-	MaxStressLevel     *int   `json:"maxStressLevel"`
-	StressQualifier    string `json:"stressQualifier"`
-
-	BodyBatteryChargedValue    *int `json:"bodyBatteryChargedValue"`
-	BodyBatteryDrainedValue    *int `json:"bodyBatteryDrainedValue"`
-	BodyBatteryHighestValue    *int `json:"bodyBatteryHighestValue"`
-	BodyBatteryLowestValue     *int `json:"bodyBatteryLowestValue"`
-	BodyBatteryMostRecentValue *int `json:"bodyBatteryMostRecentValue"`
-}
-
-func (d dailySummaryResponse) CalendarDateOr(fallback string) string {
-	if d.CalendarDate != "" {
-		return d.CalendarDate
-	}
-	return fallback
-}
-
-func fetchDailySummary(ctx context.Context, c *client.Client, date string) (dailySummaryResponse, error) {
-	var resp dailySummaryResponse
-	q := url.Values{"calendarDate": {date}}
-	err := c.GetJSON(ctx, "/usersummary-service/usersummary/daily/", q, &resp)
-	return resp, err
 }
 
 type stepsSummary struct {
