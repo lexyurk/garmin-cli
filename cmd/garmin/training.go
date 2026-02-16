@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/lexyurk/garmin-cli/internal/output"
@@ -64,7 +63,7 @@ func newTrainingStatusCmd(opts *globalOptions) *cobra.Command {
 					"date":        r.Date,
 					"status":      r.StatusPhrase,
 					"status_id":   formatMaybeInt(r.StatusID),
-					"weekly_load": formatMaybeFloatPtr(r.WeeklyTrainingLoad, 0),
+					"weekly_load": formatMaybeFloatZeroAsDash(r.WeeklyTrainingLoad, 0),
 					"trend":       r.LoadLevelTrend,
 				})
 			}
@@ -74,7 +73,7 @@ func newTrainingStatusCmd(opts *globalOptions) *cobra.Command {
 					r.Date,
 					r.StatusPhrase,
 					formatMaybeInt(r.StatusID),
-					formatMaybeFloatPtr(r.WeeklyTrainingLoad, 0),
+					formatMaybeFloatZeroAsDash(r.WeeklyTrainingLoad, 0),
 					r.LoadLevelTrend,
 				})
 			}
@@ -222,8 +221,8 @@ func newTrainingHrvCmd(opts *globalOptions) *cobra.Command {
 					"status":         r.Status,
 					"weekly_avg":     formatMaybeInt(r.WeeklyAvg),
 					"last_night_avg": formatMaybeInt(r.LastNightAvg),
-					"baseline_low":   formatMaybeFloatPtr(r.BaselineLowUpper, 0),
-					"baseline_high":  formatMaybeFloatPtr(r.BaselineBalancedUpper, 0),
+					"baseline_low":   formatMaybeFloatZeroAsDash(r.BaselineLowUpper, 0),
+					"baseline_high":  formatMaybeFloatZeroAsDash(r.BaselineBalancedUpper, 0),
 				})
 			}
 			rows := make([][]string, 0, len(results))
@@ -243,14 +242,6 @@ func newTrainingHrvCmd(opts *globalOptions) *cobra.Command {
 	cmd.Flags().StringVar(&to, "to", "", "End date (YYYY-MM-DD, inclusive)")
 	cmd.Flags().IntVar(&days, "days", 0, "Shortcut: last N days (ending today)")
 	return cmd
-}
-
-func formatMaybeFloatPtr(v *float64, decimals int) string {
-	if v == nil || *v == 0 {
-		return "—"
-	}
-	format := fmt.Sprintf("%%.%df", decimals)
-	return fmt.Sprintf(format, *v)
 }
 
 type vo2maxJSON struct {

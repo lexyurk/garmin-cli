@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"io"
@@ -70,12 +69,6 @@ func renderNotAuthenticatedTo(w io.Writer, format, profile string) error {
 			"profile": profile,
 		})
 	}
-}
-
-func renderNotAuthenticatedString(format, profile string) string {
-	var b bytes.Buffer
-	_ = renderNotAuthenticatedTo(&b, format, profile)
-	return b.String()
 }
 
 type notAuthenticatedJSON struct {

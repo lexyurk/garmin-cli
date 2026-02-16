@@ -6,25 +6,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"os"
 	"sort"
 	"strings"
 )
-
-// Format represents the output format type.
-type Format string
-
-const (
-	FormatMarkdown Format = "markdown"
-	FormatJSON     Format = "json"
-	FormatTable    Format = "table"
-	FormatHuman    Format = "human"
-)
-
-// JSON outputs data as formatted JSON to stdout.
-func JSON(data any) error {
-	return JSONTo(os.Stdout, data)
-}
 
 // JSONTo outputs data as formatted JSON to w.
 func JSONTo(w io.Writer, data any) error {
@@ -33,20 +17,10 @@ func JSONTo(w io.Writer, data any) error {
 	return enc.Encode(data)
 }
 
-// Markdown writes Markdown text to stdout.
-func Markdown(text string) error {
-	return MarkdownTo(os.Stdout, text)
-}
-
 // MarkdownTo writes Markdown text to w.
 func MarkdownTo(w io.Writer, text string) error {
 	_, err := io.WriteString(w, ensureTrailingNewline(text))
 	return err
-}
-
-// MarkdownKV renders a stable key/value section.
-func MarkdownKV(title string, fields map[string]string) error {
-	return MarkdownKVTo(os.Stdout, title, fields)
 }
 
 // MarkdownKVTo renders a stable key/value section to w.
@@ -75,11 +49,6 @@ func MarkdownKVTo(w io.Writer, title string, fields map[string]string) error {
 
 	b.WriteString("\n")
 	return MarkdownTo(w, b.String())
-}
-
-// MarkdownTable renders a GitHub-flavored Markdown table.
-func MarkdownTable(headers []string, rows [][]string) error {
-	return MarkdownTableTo(os.Stdout, headers, rows)
 }
 
 // MarkdownTableTo renders a GitHub-flavored Markdown table to w.
@@ -113,11 +82,6 @@ func MarkdownTableTo(w io.Writer, headers []string, rows [][]string) error {
 	b.WriteString("\n")
 
 	return MarkdownTo(w, b.String())
-}
-
-// Table outputs data as an aligned table.
-func Table(headers []string, rows [][]string) {
-	_ = TableTo(os.Stdout, headers, rows)
 }
 
 // TableTo outputs data as an aligned table to w.
@@ -186,11 +150,6 @@ func TableTo(w io.Writer, headers []string, rows [][]string) error {
 		}
 	}
 	return nil
-}
-
-// Human outputs data in a human-readable format.
-func Human(title string, fields map[string]string) {
-	_ = HumanTo(os.Stdout, title, fields)
 }
 
 // HumanTo outputs data in a simple human-readable format to w.

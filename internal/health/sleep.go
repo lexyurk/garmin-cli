@@ -3,7 +3,6 @@ package health
 import (
 	"context"
 	"net/url"
-	"time"
 
 	"github.com/lexyurk/garmin-cli/internal/client"
 )
@@ -69,10 +68,4 @@ func (r SleepDailyResponse) ToSummary(fallbackDate string) SleepSummary {
 		AvgSpO2:           r.DailySleepDTO.AverageSpO2Value,
 		AvgRespiration:    r.DailySleepDTO.AverageRespirationValue,
 	}
-}
-
-func (t SleepSummary) EndTimeLocal(now time.Time) time.Time {
-	// Placeholder for future: sleep endpoints also return timestamps.
-	_ = now
-	return time.Time{}
 }

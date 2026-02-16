@@ -474,7 +474,15 @@ func formatMaybeInt(v *int) string {
 }
 
 func formatMaybeFloat(v *float64, decimals int) string {
-	if v == nil {
+	return formatMaybeFloatWithZeroOption(v, decimals, false)
+}
+
+func formatMaybeFloatZeroAsDash(v *float64, decimals int) string {
+	return formatMaybeFloatWithZeroOption(v, decimals, true)
+}
+
+func formatMaybeFloatWithZeroOption(v *float64, decimals int, zeroAsDash bool) string {
+	if v == nil || (zeroAsDash && *v == 0) {
 		return "—"
 	}
 	format := fmt.Sprintf("%%.%df", decimals)

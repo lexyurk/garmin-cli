@@ -8,6 +8,12 @@ import (
 	"github.com/spf13/cobra"
 )
 
+func renderNotAuthenticatedString(format, profile string) string {
+	var b bytes.Buffer
+	_ = renderNotAuthenticatedTo(&b, format, profile)
+	return b.String()
+}
+
 func TestRenderNotAuthenticatedString_Markdown(t *testing.T) {
 	got := renderNotAuthenticatedString("markdown", "")
 	if !strings.Contains(got, "## Authentication") {
