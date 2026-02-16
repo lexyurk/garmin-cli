@@ -3,6 +3,7 @@ package training
 import (
 	"context"
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/lexyurk/garmin-cli/internal/client"
@@ -31,7 +32,15 @@ func summarizeStatus(date string, raw map[string]any) StatusSummary {
 	mr, _ := raw["mostRecentTrainingStatus"].(map[string]any)
 	payload, _ := mr["payload"].(map[string]any)
 	latest, _ := payload["latestTrainingStatusData"].(map[string]any)
-	for _, v := range latest {
+
+	keys := make([]string, 0, len(latest))
+	for k := range latest {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
+	for _, k := range keys {
+		v := latest[k]
 		if entry, ok := v.(map[string]any); ok {
 			if phrase, ok := entry["trainingStatusFeedbackPhrase"].(string); ok {
 				s.StatusPhrase = phrase
