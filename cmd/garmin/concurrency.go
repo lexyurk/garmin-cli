@@ -35,8 +35,22 @@ func mapDatesConcurrently[T any](
 		wg.Add(1)
 		go func(idx int, date string) {
 			defer wg.Done()
-			sem <- struct{}{}
+			select {
+			case <-ctx.Done():
+				var zero T
+				resCh <- result{idx: idx, val: zero, err: ctx.Err()}
+				return
+			case sem <- struct{}{}:
+			}
 			defer func() { <-sem }()
+
+			select {
+			case <-ctx.Done():
+				var zero T
+				resCh <- result{idx: idx, val: zero, err: ctx.Err()}
+				return
+			default:
+			}
 
 			v, err := fn(ctx, date)
 			if err != nil {
