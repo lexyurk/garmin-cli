@@ -59,7 +59,7 @@ func newHealthSleepCmd(opts *globalOptions) *cobra.Command {
 				return garminhealth.GetSleep(ctx, c, date)
 			})
 			if err != nil {
-				return err
+				return handleAuthedError(opts, err)
 			}
 
 			if opts.Format == "json" {
@@ -133,7 +133,7 @@ func newHealthHeartRateCmd(opts *globalOptions) *cobra.Command {
 				return garminhealth.GetDailySummary(ctx, c, date)
 			})
 			if err != nil {
-				return err
+				return handleAuthedError(opts, err)
 			}
 			out := make([]heartRateSummary, 0, len(summaries))
 			for i, s := range summaries {
@@ -196,7 +196,7 @@ func newHealthStepsCmd(opts *globalOptions) *cobra.Command {
 				return garminhealth.GetDailySummary(ctx, c, date)
 			})
 			if err != nil {
-				return err
+				return handleAuthedError(opts, err)
 			}
 			out := make([]stepsSummary, 0, len(summaries))
 			for i, s := range summaries {
@@ -259,7 +259,7 @@ func newHealthStressCmd(opts *globalOptions) *cobra.Command {
 				return garminhealth.GetDailySummary(ctx, c, date)
 			})
 			if err != nil {
-				return err
+				return handleAuthedError(opts, err)
 			}
 			out := make([]stressSummary, 0, len(summaries))
 			for i, s := range summaries {
@@ -322,7 +322,7 @@ func newHealthBodyBatteryCmd(opts *globalOptions) *cobra.Command {
 				return garminhealth.GetDailySummary(ctx, c, date)
 			})
 			if err != nil {
-				return err
+				return handleAuthedError(opts, err)
 			}
 			out := make([]bodyBatterySummary, 0, len(summaries))
 			for i, s := range summaries {

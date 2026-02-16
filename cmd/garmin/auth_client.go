@@ -1,8 +1,10 @@
 package main
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 
 	"github.com/lexyurk/garmin-cli/internal/auth"
@@ -23,22 +25,46 @@ func newAuthedClient(cmd *cobra.Command, opts *globalOptions) (*client.Client, e
 		return c, nil
 	}
 	if errors.Is(err, auth.ErrNotAuthenticated) {
-		if opts.Format == "json" {
-			_ = output.JSONTo(os.Stderr, map[string]any{
-				"error":   "not_authenticated",
-				"message": "Run `garmin auth login`",
-				"profile": orDefault(opts.Profile, "default"),
-			})
-		} else {
-			_ = renderKVTo(os.Stderr, opts.Format, "Authentication", map[string]string{
-				"status":  "not authenticated",
-				"message": "Run `garmin auth login`",
-				"profile": orDefault(opts.Profile, "default"),
-			})
-		}
+		_ = renderNotAuthenticatedTo(os.Stderr, opts.Format, opts.Profile)
 		return nil, renderedError(err)
 	}
 
 	return nil, fmt.Errorf("init client: %w", err)
+}
+
+func handleAuthedError(opts *globalOptions, err error) error {
+	if err == nil {
+		return nil
+	}
+	if errors.Is(err, auth.ErrNotAuthenticated) {
+		_ = renderNotAuthenticatedTo(os.Stderr, opts.Format, opts.Profile)
+		return renderedError(err)
+	}
+	return err
+}
+
+func renderNotAuthenticatedTo(w io.Writer, format, profile string) error {
+	profile = orDefault(profile, "default")
+
+	switch format {
+	case "json":
+		return output.JSONTo(w, map[string]any{
+			"error":   "not_authenticated",
+			"message": "Run `garmin auth login`",
+			"profile": profile,
+		})
+	default:
+		return renderKVTo(w, format, "Authentication", map[string]string{
+			"status":  "not authenticated",
+			"message": "Run `garmin auth login`",
+			"profile": profile,
+		})
+	}
+}
+
+func renderNotAuthenticatedString(format, profile string) string {
+	var b bytes.Buffer
+	_ = renderNotAuthenticatedTo(&b, format, profile)
+	return b.String()
 }
 

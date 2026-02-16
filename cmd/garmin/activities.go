@@ -46,7 +46,7 @@ func newActivitiesListCmd(opts *globalOptions) *cobra.Command {
 			ctx := cmd.Context()
 			out, err := garminactivities.List(ctx, c, limit, after, before, activityType)
 			if err != nil {
-				return err
+				return handleAuthedError(opts, err)
 			}
 
 			if opts.Format == "json" {
@@ -101,7 +101,7 @@ func newActivitiesGetCmd(opts *globalOptions) *cobra.Command {
 
 			raw, err := garminactivities.GetRaw(ctx, c, id)
 			if err != nil {
-				return err
+				return handleAuthedError(opts, err)
 			}
 
 			if opts.Format == "json" {
@@ -154,7 +154,7 @@ func newActivitiesSplitsCmd(opts *globalOptions) *cobra.Command {
 			ctx := cmd.Context()
 			raw, err := garminactivities.GetRaw(ctx, c, id)
 			if err != nil {
-				return err
+				return handleAuthedError(opts, err)
 			}
 
 			if opts.Format == "json" {

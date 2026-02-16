@@ -52,7 +52,7 @@ func newTrainingStatusCmd(opts *globalOptions) *cobra.Command {
 				return garmintraining.GetStatus(ctx, c, date)
 			})
 			if err != nil {
-				return err
+				return handleAuthedError(opts, err)
 			}
 
 			if opts.Format == "json" {
@@ -113,7 +113,7 @@ func newTrainingReadinessCmd(opts *globalOptions) *cobra.Command {
 				return garmintraining.GetReadiness(ctx, c, date)
 			})
 			if err != nil {
-				return err
+				return handleAuthedError(opts, err)
 			}
 
 			if opts.Format == "json" {
@@ -170,7 +170,7 @@ func newTrainingVo2maxCmd(opts *globalOptions) *cobra.Command {
 			ctx := cmd.Context()
 			vo2, err := garmintraining.GetVO2Max(ctx, c)
 			if err != nil {
-				return err
+				return handleAuthedError(opts, err)
 			}
 
 			if opts.Format == "json" {
@@ -215,7 +215,7 @@ func newTrainingHrvCmd(opts *globalOptions) *cobra.Command {
 				return garmintraining.GetHRV(ctx, c, date)
 			})
 			if err != nil {
-				return err
+				return handleAuthedError(opts, err)
 			}
 
 			if opts.Format == "json" {
