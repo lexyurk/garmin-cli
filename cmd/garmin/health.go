@@ -19,6 +19,7 @@ func NewHealthCmd(opts *globalOptions) *cobra.Command {
 	}
 
 	cmd.AddCommand(
+		newHealthSummaryCmd(opts),
 		newHealthSleepCmd(opts),
 		newHealthHeartRateCmd(opts),
 		newHealthStepsCmd(opts),
@@ -26,6 +27,87 @@ func NewHealthCmd(opts *globalOptions) *cobra.Command {
 		newHealthBodyBatteryCmd(opts),
 	)
 
+	return cmd
+}
+
+func newHealthSummaryCmd(opts *globalOptions) *cobra.Command {
+	var date string
+	var from string
+	var to string
+	var days int
+
+	cmd := &cobra.Command{
+		Use:   "summary",
+		Short: "Daily health summary (steps, HR, stress, body battery)",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			dates, err := timeutil.ResolveDates(timeutil.RangeOptions{Date: date, From: from, To: to, Days: days}, time.Now())
+			if err != nil {
+				return err
+			}
+			c, err := newAuthedClient(cmd, opts)
+			if err != nil {
+				return err
+			}
+
+			ctx := cmd.Context()
+			summaries, err := mapDatesConcurrently(ctx, dates, 4, func(ctx context.Context, date string) (garminhealth.DailySummary, error) {
+				return garminhealth.GetDailySummary(ctx, c, date)
+			})
+			if err != nil {
+				return handleAuthedErrorTo(cmd.ErrOrStderr(), opts, err)
+			}
+
+			out := make([]dailySummaryCompact, 0, len(summaries))
+			for i, s := range summaries {
+				d := dates[i]
+				out = append(out, dailySummaryCompact{
+					Date:            s.CalendarDateOr(d),
+					Steps:           s.TotalSteps,
+					RestingHR:       s.RestingHeartRate,
+					StressAvg:       s.AverageStressLevel,
+					StressMax:       s.MaxStressLevel,
+					StressQualifier: s.StressQualifier,
+					BodyBatteryHigh: s.BodyBatteryHighestValue,
+					BodyBatteryLow:  s.BodyBatteryLowestValue,
+				})
+			}
+
+			if opts.Format == "json" {
+				return output.JSONTo(cmd.OutOrStdout(), out)
+			}
+			if len(out) == 1 {
+				r := out[0]
+				return renderKVTo(cmd.OutOrStdout(), opts.Format, "Daily summary", map[string]string{
+					"date":              r.Date,
+					"steps":             formatMaybeInt(r.Steps),
+					"resting_hr":        formatMaybeInt(r.RestingHR),
+					"stress_avg":        formatMaybeInt(r.StressAvg),
+					"stress_max":        formatMaybeInt(r.StressMax),
+					"stress_qualifier":  orDash(r.StressQualifier),
+					"body_battery_high": formatMaybeInt(r.BodyBatteryHigh),
+					"body_battery_low":  formatMaybeInt(r.BodyBatteryLow),
+				})
+			}
+
+			rows := make([][]string, 0, len(out))
+			for _, r := range out {
+				rows = append(rows, []string{
+					r.Date,
+					formatMaybeInt(r.Steps),
+					formatMaybeInt(r.RestingHR),
+					formatMaybeInt(r.StressAvg),
+					formatMaybeInt(r.BodyBatteryHigh),
+					formatMaybeInt(r.BodyBatteryLow),
+				})
+			}
+			return renderTableTo(cmd.OutOrStdout(), opts.Format, []string{"date", "steps", "resting_hr", "stress_avg", "bb_high", "bb_low"}, rows)
+		},
+	}
+
+	cmd.Flags().StringVar(&date, "date", "", "Date (YYYY-MM-DD, default: today)")
+	cmd.Flags().StringVar(&from, "from", "", "Start date (YYYY-MM-DD, inclusive)")
+	cmd.Flags().StringVar(&to, "to", "", "End date (YYYY-MM-DD, inclusive)")
+	cmd.Flags().IntVar(&days, "days", 0, "Shortcut: last N days (ending today)")
 	return cmd
 }
 
@@ -427,6 +509,17 @@ type heartRateSummary struct {
 	RestingHR *int   `json:"resting_hr,omitempty"`
 	MinHR     *int   `json:"min_hr,omitempty"`
 	MaxHR     *int   `json:"max_hr,omitempty"`
+}
+
+type dailySummaryCompact struct {
+	Date            string `json:"date"`
+	Steps           *int   `json:"steps,omitempty"`
+	RestingHR       *int   `json:"resting_hr,omitempty"`
+	StressAvg       *int   `json:"stress_avg,omitempty"`
+	StressMax       *int   `json:"stress_max,omitempty"`
+	StressQualifier string `json:"stress_qualifier,omitempty"`
+	BodyBatteryHigh *int   `json:"body_battery_high,omitempty"`
+	BodyBatteryLow  *int   `json:"body_battery_low,omitempty"`
 }
 
 func formatMetersToKM(m *int) string {

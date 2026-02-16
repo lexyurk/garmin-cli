@@ -38,6 +38,7 @@ go install github.com/lexyurk/garmin-cli/cmd/garmin@latest
 garmin auth login
 
 # Today's health data
+garmin health summary
 garmin health sleep
 garmin health body-battery
 garmin health heart-rate
@@ -104,6 +105,7 @@ printf '%s' "$GARMIN_PASSWORD" | garmin auth login --email "$GARMIN_EMAIL" --pas
 | `auth status`            | Check authentication status            |
 | `auth logout`            | Clear stored tokens                    |
 | `health sleep`           | Sleep data                             |
+| `health summary`         | Daily health summary                   |
 | `health heart-rate`      | Heart rate data                        |
 | `health steps`           | Step count                             |
 | `health stress`          | Stress levels                          |
