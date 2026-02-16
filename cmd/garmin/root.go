@@ -19,6 +19,7 @@ func NewRootCmd(version string) *cobra.Command {
 		Use:   "garmin",
 		Short: "Garmin Connect from your terminal",
 		Long:  "Fast, ergonomic Garmin Connect CLI. Pipe it, script it, automate it.",
+		SilenceUsage: true,
 	}
 
 	cmd.PersistentFlags().StringVarP(&opts.Format, "format", "f", "markdown", "Output format: markdown, json")
