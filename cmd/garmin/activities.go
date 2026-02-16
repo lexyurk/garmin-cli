@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	garminactivities "github.com/lexyurk/garmin-cli/internal/activities"
@@ -30,6 +31,7 @@ func newActivitiesListCmd(opts *globalOptions) *cobra.Command {
 	var after string
 	var before string
 	var activityType string
+	var days int
 
 	cmd := &cobra.Command{
 		Use:   "list",
@@ -38,13 +40,19 @@ func newActivitiesListCmd(opts *globalOptions) *cobra.Command {
 			if limit <= 0 {
 				return fmt.Errorf("--limit must be > 0")
 			}
+
+			afterResolved, beforeResolved, err := resolveActivitiesDateFilters(after, before, days, time.Now())
+			if err != nil {
+				return err
+			}
+
 			c, err := newAuthedClient(cmd, opts)
 			if err != nil {
 				return err
 			}
 
 			ctx := cmd.Context()
-			out, err := garminactivities.List(ctx, c, limit, after, before, activityType)
+			out, err := garminactivities.List(ctx, c, limit, afterResolved, beforeResolved, activityType)
 			if err != nil {
 				return handleAuthedErrorTo(cmd.ErrOrStderr(), opts, err)
 			}
@@ -74,6 +82,7 @@ func newActivitiesListCmd(opts *globalOptions) *cobra.Command {
 	cmd.Flags().IntVar(&limit, "limit", 20, "Number of activities to return")
 	cmd.Flags().StringVar(&after, "after", "", "Activities after date (YYYY-MM-DD)")
 	cmd.Flags().StringVar(&before, "before", "", "Activities before date (YYYY-MM-DD)")
+	cmd.Flags().IntVar(&days, "days", 0, "Shortcut: last N days (ending today)")
 	cmd.Flags().StringVar(&activityType, "type", "", "Activity type filter (running, cycling, etc.)")
 
 	return cmd
@@ -244,4 +253,20 @@ func formatPaceMinPerKM(distanceMeters, durationSeconds float64) string {
 type activitiesSplitsJSON struct {
 	ActivityID int64 `json:"activity_id"`
 	Splits     any   `json:"splits"`
+}
+
+func resolveActivitiesDateFilters(after, before string, days int, now time.Time) (string, string, error) {
+	if days < 0 {
+		return "", "", fmt.Errorf("--days must be >= 0")
+	}
+	if days > 0 && (strings.TrimSpace(after) != "" || strings.TrimSpace(before) != "") {
+		return "", "", fmt.Errorf("use either --days or --after/--before (not both)")
+	}
+	if days == 0 {
+		return after, before, nil
+	}
+
+	end := now.In(time.Local).Format("2006-01-02")
+	start := now.In(time.Local).AddDate(0, 0, -(days - 1)).Format("2006-01-02")
+	return start, end, nil
 }
