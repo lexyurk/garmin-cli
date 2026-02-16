@@ -3,12 +3,12 @@ package main
 import (
 	"context"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/lexyurk/garmin-cli/internal/client"
 	"github.com/lexyurk/garmin-cli/internal/config"
 	"github.com/lexyurk/garmin-cli/internal/output"
+	garmintraining "github.com/lexyurk/garmin-cli/internal/training"
 	"github.com/lexyurk/garmin-cli/internal/timeutil"
 	"github.com/spf13/cobra"
 )
@@ -54,14 +54,13 @@ func newTrainingStatusCmd(opts *globalOptions) *cobra.Command {
 			}
 
 			ctx := context.Background()
-			results := make([]trainingStatusSummary, 0, len(dates))
+			results := make([]garmintraining.StatusSummary, 0, len(dates))
 			for _, d := range dates {
-				raw := map[string]any{}
-				path := fmt.Sprintf("/mobile-gateway/usersummary/trainingstatus/latest/%s", d)
-				if err := c.GetJSON(ctx, path, nil, &raw); err != nil {
+				s, err := garmintraining.GetStatus(ctx, c, d)
+				if err != nil {
 					return err
 				}
-				results = append(results, summarizeTrainingStatus(d, raw))
+				results = append(results, s)
 			}
 
 			if opts.Format == "json" {
@@ -122,13 +121,13 @@ func newTrainingReadinessCmd(opts *globalOptions) *cobra.Command {
 			}
 
 			ctx := context.Background()
-			results := make([]trainingReadinessSummary, 0, len(dates))
+			results := make([]garmintraining.ReadinessSummary, 0, len(dates))
 			for _, d := range dates {
-				var entries []trainingReadinessEntry
-				if err := c.GetJSON(ctx, fmt.Sprintf("/metrics-service/metrics/trainingreadiness/%s", d), nil, &entries); err != nil {
+				s, err := garmintraining.GetReadiness(ctx, c, d)
+				if err != nil {
 					return err
 				}
-				results = append(results, summarizeTrainingReadiness(d, entries))
+				results = append(results, s)
 			}
 
 			if opts.Format == "json" {
@@ -190,24 +189,20 @@ func newTrainingVo2maxCmd(opts *globalOptions) *cobra.Command {
 			}
 
 			ctx := context.Background()
-			var raw map[string]any
-			if err := c.GetJSON(ctx, "/userprofile-service/userprofile/user-settings", nil, &raw); err != nil {
+			vo2, err := garmintraining.GetVO2Max(ctx, c)
+			if err != nil {
 				return err
 			}
 
-			userData, _ := raw["userData"].(map[string]any)
-			running := floatFromAny(userData["vo2MaxRunning"])
-			cycling := floatFromAny(userData["vo2MaxCycling"])
-
 			if opts.Format == "json" {
 				return output.JSON(map[string]any{
-					"running": running,
-					"cycling": cycling,
+					"running": vo2.Running,
+					"cycling": vo2.Cycling,
 				})
 			}
 			return output.MarkdownKV("VO2 max", map[string]string{
-				"running": formatMaybeFloat0(running, 1),
-				"cycling": formatMaybeFloat0(cycling, 1),
+				"running": formatMaybeFloat0(vo2.Running, 1),
+				"cycling": formatMaybeFloat0(vo2.Cycling, 1),
 			})
 		},
 	}
@@ -241,13 +236,13 @@ func newTrainingHrvCmd(opts *globalOptions) *cobra.Command {
 			}
 
 			ctx := context.Background()
-			results := make([]hrvSummary, 0, len(dates))
+			results := make([]garmintraining.HRVSummary, 0, len(dates))
 			for _, d := range dates {
-				var resp hrvResponse
-				if err := c.GetJSON(ctx, fmt.Sprintf("/hrv-service/hrv/%s", d), nil, &resp); err != nil {
+				s, err := garmintraining.GetHRV(ctx, c, d)
+				if err != nil {
 					return err
 				}
-				results = append(results, resp.toSummary(d))
+				results = append(results, s)
 			}
 
 			if opts.Format == "json" {
@@ -281,133 +276,6 @@ func newTrainingHrvCmd(opts *globalOptions) *cobra.Command {
 	cmd.Flags().StringVar(&to, "to", "", "End date (YYYY-MM-DD, inclusive)")
 	cmd.Flags().IntVar(&days, "days", 0, "Shortcut: last N days (ending today)")
 	return cmd
-}
-
-type trainingReadinessEntry struct {
-	CalendarDate      string `json:"calendarDate"`
-	Timestamp         string `json:"timestamp"`
-	Level             string `json:"level"`
-	Score             *int   `json:"score"`
-	SleepScore        *int   `json:"sleepScore"`
-	HRVWeeklyAverage  *int   `json:"hrvWeeklyAverage"`
-	AcuteLoad         *int   `json:"acuteLoad"`
-	RecoveryTime      *int   `json:"recoveryTime"`
-}
-
-type trainingReadinessSummary struct {
-	Date            string `json:"date"`
-	Level           string `json:"level,omitempty"`
-	Score           *int   `json:"score,omitempty"`
-	SleepScore      *int   `json:"sleep_score,omitempty"`
-	HRVWeeklyAverage *int  `json:"hrv_weekly_avg,omitempty"`
-	AcuteLoad       *int   `json:"acute_load,omitempty"`
-	RecoveryTime    *int   `json:"recovery_time_seconds,omitempty"`
-}
-
-func summarizeTrainingReadiness(fallbackDate string, entries []trainingReadinessEntry) trainingReadinessSummary {
-	best := trainingReadinessEntry{}
-	for _, e := range entries {
-		if e.Timestamp > best.Timestamp {
-			best = e
-		}
-	}
-	date := best.CalendarDate
-	if date == "" {
-		date = fallbackDate
-	}
-	return trainingReadinessSummary{
-		Date:             date,
-		Level:            best.Level,
-		Score:            best.Score,
-		SleepScore:       best.SleepScore,
-		HRVWeeklyAverage: best.HRVWeeklyAverage,
-		AcuteLoad:        best.AcuteLoad,
-		RecoveryTime:     best.RecoveryTime,
-	}
-}
-
-type hrvResponse struct {
-	HRVSummary hrvSummaryDTO `json:"hrvSummary"`
-}
-
-type hrvSummaryDTO struct {
-	CalendarDate   string            `json:"calendarDate"`
-	WeeklyAvg      *int              `json:"weeklyAvg"`
-	LastNightAvg   *int              `json:"lastNightAvg"`
-	Status         string            `json:"status"`
-	Baseline       map[string]any    `json:"baseline"`
-}
-
-type hrvSummary struct {
-	Date                  string   `json:"date"`
-	WeeklyAvg             *int     `json:"weekly_avg,omitempty"`
-	LastNightAvg          *int     `json:"last_night_avg,omitempty"`
-	Status                string   `json:"status,omitempty"`
-	BaselineLowUpper      *float64 `json:"baseline_low_upper,omitempty"`
-	BaselineBalancedUpper *float64 `json:"baseline_balanced_upper,omitempty"`
-}
-
-func (r hrvResponse) toSummary(fallbackDate string) hrvSummary {
-	date := r.HRVSummary.CalendarDate
-	if date == "" {
-		date = fallbackDate
-	}
-
-	s := hrvSummary{
-		Date:         date,
-		WeeklyAvg:    r.HRVSummary.WeeklyAvg,
-		LastNightAvg: r.HRVSummary.LastNightAvg,
-		Status:       r.HRVSummary.Status,
-	}
-	if v, ok := r.HRVSummary.Baseline["lowUpper"].(float64); ok {
-		s.BaselineLowUpper = &v
-	}
-	if v, ok := r.HRVSummary.Baseline["balancedUpper"].(float64); ok {
-		s.BaselineBalancedUpper = &v
-	}
-	return s
-}
-
-type trainingStatusSummary struct {
-	Date              string    `json:"date"`
-	StatusPhrase      string    `json:"status_phrase,omitempty"`
-	StatusID          *int      `json:"status_id,omitempty"`
-	WeeklyTrainingLoad *float64 `json:"weekly_training_load,omitempty"`
-	LoadLevelTrend    string    `json:"load_level_trend,omitempty"`
-}
-
-func summarizeTrainingStatus(date string, raw map[string]any) trainingStatusSummary {
-	s := trainingStatusSummary{Date: date}
-
-	// mostRecentTrainingStatus.payload.latestTrainingStatusData.{deviceId} -> dict
-	mr, _ := raw["mostRecentTrainingStatus"].(map[string]any)
-	payload, _ := mr["payload"].(map[string]any)
-	latest, _ := payload["latestTrainingStatusData"].(map[string]any)
-	for _, v := range latest {
-		if entry, ok := v.(map[string]any); ok {
-			if phrase, ok := entry["trainingStatusFeedbackPhrase"].(string); ok {
-				s.StatusPhrase = phrase
-			}
-			if id, ok := entry["trainingStatus"].(float64); ok {
-				i := int(id)
-				s.StatusID = &i
-			}
-			if wl, ok := entry["weeklyTrainingLoad"].(float64); ok {
-				s.WeeklyTrainingLoad = &wl
-			}
-			if trend, ok := entry["loadLevelTrend"].(string); ok {
-				s.LoadLevelTrend = trend
-			}
-			break
-		}
-	}
-
-	if strings.TrimSpace(s.StatusPhrase) == "" && s.StatusID == nil {
-		// Garmin returns many permutations; keep it stable.
-		s.StatusPhrase = "—"
-	}
-
-	return s
 }
 
 func formatMaybeFloatPtr(v *float64, decimals int) string {
