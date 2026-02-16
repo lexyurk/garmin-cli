@@ -190,32 +190,6 @@ func newActivitiesSplitsCmd(opts *globalOptions) *cobra.Command {
 	return cmd
 }
 
-func floatFromAny(v any) float64 {
-	switch t := v.(type) {
-	case float64:
-		return t
-	case int:
-		return float64(t)
-	case int64:
-		return float64(t)
-	default:
-		return 0
-	}
-}
-
-func intFromAny(v any) int {
-	switch t := v.(type) {
-	case float64:
-		return int(t)
-	case int:
-		return t
-	case int64:
-		return int(t)
-	default:
-		return 0
-	}
-}
-
 func formatDistanceKM(m float64) string {
 	if m <= 0 {
 		return "—"
