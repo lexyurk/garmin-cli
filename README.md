@@ -56,6 +56,10 @@ garmin auth status
 
 # Switch output to JSON (for scripts)
 garmin health sleep --format json
+
+# Time ranges
+garmin health sleep --days 7
+garmin activities list --after 2026-01-01 --before 2026-02-01 --limit 50
 ```
 
 ## Command Reference
