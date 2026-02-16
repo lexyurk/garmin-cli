@@ -58,4 +58,3 @@ func TestNotAuthenticated_JSONGoesToStderr_StdoutClean(t *testing.T) {
 		t.Fatalf("expected stderr to contain json not_authenticated, got:\n%s", stderr.String())
 	}
 }
-
