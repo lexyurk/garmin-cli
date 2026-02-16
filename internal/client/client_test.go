@@ -1,10 +1,13 @@
 package client
 
 import (
+	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -151,5 +154,44 @@ func TestClient_RetriesOn429(t *testing.T) {
 	}
 	if attempts != 2 {
 		t.Fatalf("expected 2 attempts, got %d", attempts)
+	}
+}
+
+func TestClient_Logf_DoesNotLeakAuthorization(t *testing.T) {
+	sess := &auth.Session{
+		OAuth1: auth.OAuth1Token{OAuthToken: "o1", OAuthTokenSecret: "o1s"},
+		OAuth2: auth.OAuth2Token{TokenType: "bearer", AccessToken: "super-secret-access-token", ExpiresAt: time.Now().Add(time.Hour).Unix()},
+	}
+
+	var logBuf bytes.Buffer
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"ok":true}`))
+	}))
+	defer srv.Close()
+
+	c := NewWithSession("ignored", "default", sess, Options{
+		HTTPClient: srv.Client(),
+		BaseURL:    srv.URL,
+		Logf: func(format string, args ...any) {
+			_, _ = logBuf.WriteString("LOG: ")
+			_, _ = fmt.Fprintf(&logBuf, format, args...)
+			_, _ = logBuf.WriteString("\n")
+		},
+	})
+
+	var out map[string]any
+	if err := c.GetJSON(context.Background(), "/ping", nil, &out); err != nil {
+		t.Fatalf("GetJSON error: %v", err)
+	}
+
+	logs := logBuf.String()
+	if !strings.Contains(logs, "connectapi:") {
+		t.Fatalf("expected logs to contain connectapi prefix, got:\n%s", logs)
+	}
+	if strings.Contains(logs, "Authorization") || strings.Contains(logs, "super-secret-access-token") {
+		t.Fatalf("expected logs not to leak auth, got:\n%s", logs)
 	}
 }

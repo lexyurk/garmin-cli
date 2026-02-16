@@ -33,6 +33,8 @@ type Client struct {
 
 	refreshOAuth2 func(ctx context.Context, configDir string, oauth1 auth.OAuth1Token) (auth.OAuth2Token, error)
 	saveSession   func(configDir, profile string, s *auth.Session) error
+
+	logf func(format string, args ...any)
 }
 
 type Options struct {
@@ -40,6 +42,7 @@ type Options struct {
 	BaseURL       string
 	RefreshOAuth2 func(ctx context.Context, configDir string, oauth1 auth.OAuth1Token) (auth.OAuth2Token, error)
 	SaveSession   func(configDir, profile string, s *auth.Session) error
+	Logf          func(format string, args ...any)
 }
 
 // New loads tokens for profile and returns a ready-to-use client.
@@ -78,7 +81,15 @@ func NewWithSession(configDir, profile string, session *auth.Session, opts Optio
 		session:       session,
 		refreshOAuth2: refreshFn,
 		saveSession:   saveFn,
+		logf:          opts.Logf,
 	}
+}
+
+func (c *Client) logfSafe(format string, args ...any) {
+	if c.logf == nil {
+		return
+	}
+	c.logf(format, args...)
 }
 
 // Do performs an authenticated request to the Connect API.
@@ -162,6 +173,7 @@ func (c *Client) ensureFreshOAuth2(ctx context.Context) error {
 		return nil
 	}
 
+	c.logfSafe("connectapi: oauth2 expired; refreshing")
 	oauth2, err := c.refreshOAuth2(ctx, c.configDir, oauth1)
 	if err != nil {
 		return err
@@ -175,6 +187,7 @@ func (c *Client) ensureFreshOAuth2(ctx context.Context) error {
 	if err := c.saveSession(c.configDir, c.profile, &snapshot); err != nil {
 		return err
 	}
+	c.logfSafe("connectapi: oauth2 refreshed")
 	return nil
 }
 
@@ -198,7 +211,15 @@ func (c *Client) doWithRetry(req *http.Request) (*http.Response, error) {
 			}
 		}
 
+		attemptStart := time.Now()
 		resp, err := c.httpClient.Do(r)
+		attemptDur := time.Since(attemptStart)
+
+		if err != nil {
+			c.logfSafe("connectapi: %s %s attempt=%d error=%v", r.Method, r.URL.Path, attempt, err)
+		} else if resp != nil {
+			c.logfSafe("connectapi: %s %s attempt=%d status=%d dur=%s", r.Method, r.URL.Path, attempt, resp.StatusCode, attemptDur.Round(time.Millisecond))
+		}
 		if err == nil && resp != nil && resp.StatusCode < 500 && resp.StatusCode != 429 {
 			return resp, nil
 		}
