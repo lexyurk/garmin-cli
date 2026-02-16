@@ -26,11 +26,16 @@ type Client struct {
 	configDir string
 	profile   string
 	session   *auth.Session
+
+	refreshOAuth2 func(ctx context.Context, configDir string, oauth1 auth.OAuth1Token) (auth.OAuth2Token, error)
+	saveSession   func(configDir, profile string, s *auth.Session) error
 }
 
 type Options struct {
 	HTTPClient *http.Client
 	BaseURL    string
+	RefreshOAuth2 func(ctx context.Context, configDir string, oauth1 auth.OAuth1Token) (auth.OAuth2Token, error)
+	SaveSession   func(configDir, profile string, s *auth.Session) error
 }
 
 // New loads tokens for profile and returns a ready-to-use client.
@@ -52,12 +57,23 @@ func NewWithSession(configDir, profile string, session *auth.Session, opts Optio
 		u = baseURL
 	}
 
+	refreshFn := opts.RefreshOAuth2
+	if refreshFn == nil {
+		refreshFn = auth.RefreshOAuth2
+	}
+	saveFn := opts.SaveSession
+	if saveFn == nil {
+		saveFn = auth.SaveSession
+	}
+
 	return &Client{
 		httpClient: httpClient,
 		baseURL:    u,
 		configDir:  configDir,
 		profile:    profile,
 		session:    session,
+		refreshOAuth2: refreshFn,
+		saveSession:   saveFn,
 	}
 }
 
@@ -108,13 +124,13 @@ func (c *Client) ensureFreshOAuth2(ctx context.Context) error {
 		return nil
 	}
 
-	oauth2, err := auth.RefreshOAuth2(ctx, c.configDir, c.session.OAuth1)
+	oauth2, err := c.refreshOAuth2(ctx, c.configDir, c.session.OAuth1)
 	if err != nil {
 		return err
 	}
 	c.session.OAuth2 = oauth2
 
-	if err := auth.SaveSession(c.configDir, c.profile, c.session); err != nil {
+	if err := c.saveSession(c.configDir, c.profile, c.session); err != nil {
 		return err
 	}
 	return nil
