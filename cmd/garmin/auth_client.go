@@ -19,7 +19,7 @@ func newAuthedClient(cmd *cobra.Command, opts *globalOptions) (*client.Client, e
 		return nil, err
 	}
 
-	c, err := client.New(cfgDir, opts.Profile, client.Options{})
+	c, err := client.New(cfgDir, opts.Profile, clientOptionsForCmd(cmd, opts))
 	if err == nil {
 		return c, nil
 	}
@@ -29,6 +29,17 @@ func newAuthedClient(cmd *cobra.Command, opts *globalOptions) (*client.Client, e
 	}
 
 	return nil, fmt.Errorf("init client: %w", err)
+}
+
+func clientOptionsForCmd(cmd *cobra.Command, opts *globalOptions) client.Options {
+	if opts == nil || !opts.Verbose || opts.Quiet {
+		return client.Options{}
+	}
+	return client.Options{
+		Logf: func(format string, args ...any) {
+			_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "garmin verbose: "+format+"\n", args...)
+		},
+	}
 }
 
 func handleAuthedErrorTo(w io.Writer, opts *globalOptions, err error) error {

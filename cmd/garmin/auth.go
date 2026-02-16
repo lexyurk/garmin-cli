@@ -147,7 +147,7 @@ func newAuthStatusCmd(opts *globalOptions) *cobra.Command {
 
 			// Lightweight verified call (also refreshes OAuth2 if needed).
 			ctx := cmd.Context()
-			c, err := client.New(cfgDir, opts.Profile, client.Options{})
+			c, err := client.New(cfgDir, opts.Profile, clientOptionsForCmd(cmd, opts))
 			if err != nil {
 				if errors.Is(err, auth.ErrNotAuthenticated) {
 					if opts.Format == "json" {
