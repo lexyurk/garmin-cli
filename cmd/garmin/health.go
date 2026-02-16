@@ -6,8 +6,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/lexyurk/garmin-cli/internal/client"
-	"github.com/lexyurk/garmin-cli/internal/config"
 	garminhealth "github.com/lexyurk/garmin-cli/internal/health"
 	"github.com/lexyurk/garmin-cli/internal/output"
 	"github.com/lexyurk/garmin-cli/internal/timeutil"
@@ -41,11 +39,6 @@ func newHealthSleepCmd(opts *globalOptions) *cobra.Command {
 		Use:   "sleep",
 		Short: "Sleep data",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfgDir, err := config.ResolveConfigDir(opts.ConfigDir)
-			if err != nil {
-				return err
-			}
-
 			dates, err := timeutil.ResolveDates(timeutil.RangeOptions{
 				Date: date,
 				From: from,
@@ -56,7 +49,7 @@ func newHealthSleepCmd(opts *globalOptions) *cobra.Command {
 				return err
 			}
 
-			c, err := client.New(cfgDir, opts.Profile, client.Options{})
+			c, err := newAuthedClient(cmd, opts)
 			if err != nil {
 				return err
 			}
@@ -126,15 +119,11 @@ func newHealthHeartRateCmd(opts *globalOptions) *cobra.Command {
 		Use:   "heart-rate",
 		Short: "Heart rate data",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfgDir, err := config.ResolveConfigDir(opts.ConfigDir)
-			if err != nil {
-				return err
-			}
 			dates, err := timeutil.ResolveDates(timeutil.RangeOptions{Date: date, From: from, To: to, Days: days}, time.Now())
 			if err != nil {
 				return err
 			}
-			c, err := client.New(cfgDir, opts.Profile, client.Options{})
+			c, err := newAuthedClient(cmd, opts)
 			if err != nil {
 				return err
 			}
@@ -193,15 +182,11 @@ func newHealthStepsCmd(opts *globalOptions) *cobra.Command {
 		Use:   "steps",
 		Short: "Step count",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfgDir, err := config.ResolveConfigDir(opts.ConfigDir)
-			if err != nil {
-				return err
-			}
 			dates, err := timeutil.ResolveDates(timeutil.RangeOptions{Date: date, From: from, To: to, Days: days}, time.Now())
 			if err != nil {
 				return err
 			}
-			c, err := client.New(cfgDir, opts.Profile, client.Options{})
+			c, err := newAuthedClient(cmd, opts)
 			if err != nil {
 				return err
 			}
@@ -260,15 +245,11 @@ func newHealthStressCmd(opts *globalOptions) *cobra.Command {
 		Use:   "stress",
 		Short: "Stress levels",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfgDir, err := config.ResolveConfigDir(opts.ConfigDir)
-			if err != nil {
-				return err
-			}
 			dates, err := timeutil.ResolveDates(timeutil.RangeOptions{Date: date, From: from, To: to, Days: days}, time.Now())
 			if err != nil {
 				return err
 			}
-			c, err := client.New(cfgDir, opts.Profile, client.Options{})
+			c, err := newAuthedClient(cmd, opts)
 			if err != nil {
 				return err
 			}
@@ -327,15 +308,11 @@ func newHealthBodyBatteryCmd(opts *globalOptions) *cobra.Command {
 		Use:   "body-battery",
 		Short: "Body battery",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfgDir, err := config.ResolveConfigDir(opts.ConfigDir)
-			if err != nil {
-				return err
-			}
 			dates, err := timeutil.ResolveDates(timeutil.RangeOptions{Date: date, From: from, To: to, Days: days}, time.Now())
 			if err != nil {
 				return err
 			}
-			c, err := client.New(cfgDir, opts.Profile, client.Options{})
+			c, err := newAuthedClient(cmd, opts)
 			if err != nil {
 				return err
 			}

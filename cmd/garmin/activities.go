@@ -6,8 +6,6 @@ import (
 	"time"
 
 	garminactivities "github.com/lexyurk/garmin-cli/internal/activities"
-	"github.com/lexyurk/garmin-cli/internal/client"
-	"github.com/lexyurk/garmin-cli/internal/config"
 	"github.com/lexyurk/garmin-cli/internal/output"
 	"github.com/spf13/cobra"
 )
@@ -40,12 +38,7 @@ func newActivitiesListCmd(opts *globalOptions) *cobra.Command {
 			if limit <= 0 {
 				return fmt.Errorf("--limit must be > 0")
 			}
-
-			cfgDir, err := config.ResolveConfigDir(opts.ConfigDir)
-			if err != nil {
-				return err
-			}
-			c, err := client.New(cfgDir, opts.Profile, client.Options{})
+			c, err := newAuthedClient(cmd, opts)
 			if err != nil {
 				return err
 			}
@@ -99,11 +92,7 @@ func newActivitiesGetCmd(opts *globalOptions) *cobra.Command {
 				return fmt.Errorf("invalid activity id %q", args[0])
 			}
 
-			cfgDir, err := config.ResolveConfigDir(opts.ConfigDir)
-			if err != nil {
-				return err
-			}
-			c, err := client.New(cfgDir, opts.Profile, client.Options{})
+			c, err := newAuthedClient(cmd, opts)
 			if err != nil {
 				return err
 			}
@@ -157,11 +146,7 @@ func newActivitiesSplitsCmd(opts *globalOptions) *cobra.Command {
 				return fmt.Errorf("invalid activity id %q", args[0])
 			}
 
-			cfgDir, err := config.ResolveConfigDir(opts.ConfigDir)
-			if err != nil {
-				return err
-			}
-			c, err := client.New(cfgDir, opts.Profile, client.Options{})
+			c, err := newAuthedClient(cmd, opts)
 			if err != nil {
 				return err
 			}

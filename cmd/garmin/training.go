@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/lexyurk/garmin-cli/internal/client"
-	"github.com/lexyurk/garmin-cli/internal/config"
 	"github.com/lexyurk/garmin-cli/internal/output"
 	garmintraining "github.com/lexyurk/garmin-cli/internal/training"
 	"github.com/lexyurk/garmin-cli/internal/timeutil"
@@ -39,11 +37,7 @@ func newTrainingStatusCmd(opts *globalOptions) *cobra.Command {
 		Use:   "status",
 		Short: "Training status (Productive, Peaking, etc.)",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfgDir, err := config.ResolveConfigDir(opts.ConfigDir)
-			if err != nil {
-				return err
-			}
-			c, err := client.New(cfgDir, opts.Profile, client.Options{})
+			c, err := newAuthedClient(cmd, opts)
 			if err != nil {
 				return err
 			}
@@ -104,11 +98,7 @@ func newTrainingReadinessCmd(opts *globalOptions) *cobra.Command {
 		Use:   "readiness",
 		Short: "Training readiness score (0-100)",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfgDir, err := config.ResolveConfigDir(opts.ConfigDir)
-			if err != nil {
-				return err
-			}
-			c, err := client.New(cfgDir, opts.Profile, client.Options{})
+			c, err := newAuthedClient(cmd, opts)
 			if err != nil {
 				return err
 			}
@@ -172,11 +162,7 @@ func newTrainingVo2maxCmd(opts *globalOptions) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			_ = date // kept for backwards-compat; VO2 max is not daily.
 
-			cfgDir, err := config.ResolveConfigDir(opts.ConfigDir)
-			if err != nil {
-				return err
-			}
-			c, err := client.New(cfgDir, opts.Profile, client.Options{})
+			c, err := newAuthedClient(cmd, opts)
 			if err != nil {
 				return err
 			}
@@ -214,11 +200,7 @@ func newTrainingHrvCmd(opts *globalOptions) *cobra.Command {
 		Use:   "hrv",
 		Short: "Heart rate variability",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfgDir, err := config.ResolveConfigDir(opts.ConfigDir)
-			if err != nil {
-				return err
-			}
-			c, err := client.New(cfgDir, opts.Profile, client.Options{})
+			c, err := newAuthedClient(cmd, opts)
 			if err != nil {
 				return err
 			}
