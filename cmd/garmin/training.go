@@ -178,13 +178,41 @@ func newTrainingVo2maxCmd(opts *globalOptions) *cobra.Command {
 		Use:   "vo2max",
 		Short: "VO2 max estimates",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			_ = opts
-			_ = date
-			fmt.Println("TODO: garmin training vo2max")
-			return nil
+			_ = date // kept for backwards-compat; VO2 max is not daily.
+
+			cfgDir, err := config.ResolveConfigDir(opts.ConfigDir)
+			if err != nil {
+				return err
+			}
+			c, err := client.New(cfgDir, opts.Profile, client.Options{})
+			if err != nil {
+				return err
+			}
+
+			ctx := context.Background()
+			var raw map[string]any
+			if err := c.GetJSON(ctx, "/userprofile-service/userprofile/user-settings", nil, &raw); err != nil {
+				return err
+			}
+
+			userData, _ := raw["userData"].(map[string]any)
+			running := floatFromAny(userData["vo2MaxRunning"])
+			cycling := floatFromAny(userData["vo2MaxCycling"])
+
+			if opts.Format == "json" {
+				return output.JSON(map[string]any{
+					"running": running,
+					"cycling": cycling,
+				})
+			}
+			return output.MarkdownKV("VO2 max", map[string]string{
+				"running": formatMaybeFloat0(running, 1),
+				"cycling": formatMaybeFloat0(cycling, 1),
+			})
 		},
 	}
 	cmd.Flags().StringVar(&date, "date", "", "Date (YYYY-MM-DD, default: today)")
+	_ = cmd.Flags().MarkDeprecated("date", "VO2 max is not daily; this flag will be removed")
 	return cmd
 }
 
