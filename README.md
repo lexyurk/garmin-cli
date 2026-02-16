@@ -1,4 +1,4 @@
-# garmin-cli
+# garmin
 
 Fast, ergonomic Garmin Connect CLI written in Go.
 
@@ -61,6 +61,12 @@ garmin health sleep --format json
 # Time ranges
 garmin health sleep --days 7
 garmin activities list --after 2026-01-01 --before 2026-02-01 --limit 50
+```
+
+### Non-interactive login (recommended for CI)
+
+```bash
+printf '%s' "$GARMIN_PASSWORD" | garmin auth login --email "$GARMIN_EMAIL" --password-stdin
 ```
 
 ## Command Reference
