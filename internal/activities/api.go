@@ -34,7 +34,7 @@ type Summary struct {
 	Name            string  `json:"name"`
 	DistanceMeters  float64 `json:"distance_meters"`
 	DurationSeconds float64 `json:"duration_seconds"`
-	Calories        int      `json:"calories,omitempty"`
+	Calories        int     `json:"calories,omitempty"`
 	AvgHR           int     `json:"avg_hr,omitempty"`
 }
 
