@@ -23,19 +23,34 @@ const (
 
 // JSON outputs data as formatted JSON to stdout.
 func JSON(data any) error {
-	enc := json.NewEncoder(os.Stdout)
+	return JSONTo(os.Stdout, data)
+}
+
+// JSONTo outputs data as formatted JSON to w.
+func JSONTo(w io.Writer, data any) error {
+	enc := json.NewEncoder(w)
 	enc.SetIndent("", "  ")
 	return enc.Encode(data)
 }
 
 // Markdown writes Markdown text to stdout.
 func Markdown(text string) error {
-	_, err := io.WriteString(os.Stdout, ensureTrailingNewline(text))
+	return MarkdownTo(os.Stdout, text)
+}
+
+// MarkdownTo writes Markdown text to w.
+func MarkdownTo(w io.Writer, text string) error {
+	_, err := io.WriteString(w, ensureTrailingNewline(text))
 	return err
 }
 
 // MarkdownKV renders a stable key/value section.
 func MarkdownKV(title string, fields map[string]string) error {
+	return MarkdownKVTo(os.Stdout, title, fields)
+}
+
+// MarkdownKVTo renders a stable key/value section to w.
+func MarkdownKVTo(w io.Writer, title string, fields map[string]string) error {
 	var b strings.Builder
 	if title != "" {
 		b.WriteString("## ")
@@ -59,11 +74,16 @@ func MarkdownKV(title string, fields map[string]string) error {
 	}
 
 	b.WriteString("\n")
-	return Markdown(b.String())
+	return MarkdownTo(w, b.String())
 }
 
 // MarkdownTable renders a GitHub-flavored Markdown table.
 func MarkdownTable(headers []string, rows [][]string) error {
+	return MarkdownTableTo(os.Stdout, headers, rows)
+}
+
+// MarkdownTableTo renders a GitHub-flavored Markdown table to w.
+func MarkdownTableTo(w io.Writer, headers []string, rows [][]string) error {
 	var b strings.Builder
 
 	writeRow := func(cols []string) {
@@ -87,7 +107,7 @@ func MarkdownTable(headers []string, rows [][]string) error {
 	}
 	b.WriteString("\n")
 
-	return Markdown(b.String())
+	return MarkdownTo(w, b.String())
 }
 
 // Table outputs data as an aligned table.
