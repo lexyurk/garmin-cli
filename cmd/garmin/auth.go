@@ -45,6 +45,17 @@ func newAuthLoginCmd(opts *globalOptions) *cobra.Command {
 			if email == "" {
 				email = os.Getenv("GARMIN_EMAIL")
 			}
+			if email == "" {
+				// Prompt interactively if possible.
+				if tty, err := os.Open("/dev/tty"); err == nil {
+					defer tty.Close()
+					v, err := readLine("Email: ", tty)
+					if err != nil {
+						return err
+					}
+					email = strings.TrimSpace(v)
+				}
+			}
 			if passwordStdin {
 				if strings.TrimSpace(password) != "" {
 					return fmt.Errorf("use either --password or --password-stdin (not both)")

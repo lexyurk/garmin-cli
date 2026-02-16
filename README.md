@@ -109,7 +109,7 @@ Tokens stored in:
 ## Authentication notes (SSO, MFA)
 
 - `garmin auth login` uses Garmin SSO to obtain OAuth tokens for `connectapi.garmin.com`.
-- If you omit `--password`, you’ll be prompted for it (when running in a TTY).
+- If you omit `--email` and/or `--password`, you’ll be prompted (when running in a TTY).
 - For CI / non-interactive usage, prefer `--password-stdin` so the password isn’t visible in process args:
   - `printf '%s' "$GARMIN_PASSWORD" | garmin auth login --email "$GARMIN_EMAIL" --password-stdin`
 - If your account requires MFA, you’ll be prompted for the code.
