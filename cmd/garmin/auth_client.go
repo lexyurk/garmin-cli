@@ -3,10 +3,12 @@ package main
 import (
 	"errors"
 	"fmt"
+	"os"
 
 	"github.com/lexyurk/garmin-cli/internal/auth"
 	"github.com/lexyurk/garmin-cli/internal/client"
 	"github.com/lexyurk/garmin-cli/internal/config"
+	"github.com/lexyurk/garmin-cli/internal/output"
 	"github.com/spf13/cobra"
 )
 
@@ -21,11 +23,19 @@ func newAuthedClient(cmd *cobra.Command, opts *globalOptions) (*client.Client, e
 		return c, nil
 	}
 	if errors.Is(err, auth.ErrNotAuthenticated) {
-		_ = renderKV(opts.Format, "Authentication", map[string]string{
-			"status":  "not authenticated",
-			"message": "Run `garmin auth login`",
-			"profile": orDefault(opts.Profile, "default"),
-		})
+		if opts.Format == "json" {
+			_ = output.JSONTo(os.Stderr, map[string]any{
+				"error":   "not_authenticated",
+				"message": "Run `garmin auth login`",
+				"profile": orDefault(opts.Profile, "default"),
+			})
+		} else {
+			_ = renderKVTo(os.Stderr, opts.Format, "Authentication", map[string]string{
+				"status":  "not authenticated",
+				"message": "Run `garmin auth login`",
+				"profile": orDefault(opts.Profile, "default"),
+			})
+		}
 		return nil, renderedError(err)
 	}
 
