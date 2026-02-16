@@ -55,6 +55,35 @@ func TestMarkdownTableTo_EscapesPipesAndNewlines(t *testing.T) {
 	}
 }
 
+func TestMarkdownTableTo_PadsMissingColumns(t *testing.T) {
+	var b bytes.Buffer
+	err := MarkdownTableTo(&b, []string{"a", "b"}, [][]string{
+		{"only-a"},
+	})
+	if err != nil {
+		t.Fatalf("unexpected err: %v", err)
+	}
+	got := b.String()
+	// Expect exactly 2 columns: "| only-a |  |"
+	if !strings.Contains(got, "| only-a |  |") {
+		t.Fatalf("expected padded empty column, got:\n%s", got)
+	}
+}
+
+func TestMarkdownTableTo_TruncatesExtraColumns(t *testing.T) {
+	var b bytes.Buffer
+	err := MarkdownTableTo(&b, []string{"a", "b"}, [][]string{
+		{"x", "y", "z"},
+	})
+	if err != nil {
+		t.Fatalf("unexpected err: %v", err)
+	}
+	got := b.String()
+	if strings.Contains(got, "z") {
+		t.Fatalf("expected extra column to be truncated, got:\n%s", got)
+	}
+}
+
 func TestHumanTo_SortsKeys(t *testing.T) {
 	var b bytes.Buffer
 	if err := HumanTo(&b, "Title", map[string]string{"b": "2", "a": "1"}); err != nil {

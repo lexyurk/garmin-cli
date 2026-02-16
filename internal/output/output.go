@@ -86,9 +86,13 @@ func MarkdownTable(headers []string, rows [][]string) error {
 func MarkdownTableTo(w io.Writer, headers []string, rows [][]string) error {
 	var b strings.Builder
 
-	writeRow := func(cols []string) {
+	writeRow := func(colCount int, cols []string) {
 		b.WriteString("|")
-		for _, col := range cols {
+		for i := 0; i < colCount; i++ {
+			col := ""
+			if i < len(cols) {
+				col = cols[i]
+			}
 			b.WriteString(" ")
 			b.WriteString(escapeMarkdownInline(col))
 			b.WriteString(" |")
@@ -96,14 +100,15 @@ func MarkdownTableTo(w io.Writer, headers []string, rows [][]string) error {
 		b.WriteString("\n")
 	}
 
-	writeRow(headers)
+	colCount := len(headers)
+	writeRow(colCount, headers)
 	sep := make([]string, len(headers))
 	for i := range sep {
 		sep[i] = "---"
 	}
-	writeRow(sep)
+	writeRow(colCount, sep)
 	for _, row := range rows {
-		writeRow(row)
+		writeRow(colCount, row)
 	}
 	b.WriteString("\n")
 
