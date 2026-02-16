@@ -8,8 +8,8 @@ Fast, ergonomic Garmin Connect CLI written in Go.
 
 - **Fast** — native Go binary, instant startup
 - **All your Garmin data** — activities, sleep, HR, stress, body battery, training metrics
-- **Script-friendly** — JSON output, composable with `jq`, pipes, standard Unix tools
-- **Multiple output formats** — JSON for scripts, tables for terminals, human-readable for quick glances
+- **LLM-friendly by default** — Markdown output that’s easy to paste into chats/prompts
+- **Script-friendly when needed** — JSON output, composable with `jq`, pipes, standard Unix tools
 
 ## Installation
 
@@ -31,28 +31,28 @@ go install github.com/lexyurk/garmin-cli/cmd/garmin@latest
 
 ```bash
 # Authenticate with Garmin Connect
-garmin-cli auth login
+garmin auth login
 
 # Today's health data
-garmin-cli health sleep
-garmin-cli health body-battery
-garmin-cli health heart-rate
-garmin-cli health stress
-garmin-cli health steps
+garmin health sleep
+garmin health body-battery
+garmin health heart-rate
+garmin health stress
+garmin health steps
 
 # Recent activities
-garmin-cli activities list --limit 10
-garmin-cli activities get <activity-id>
-garmin-cli activities splits <activity-id>
+garmin activities list --limit 10
+garmin activities get <activity-id>
+garmin activities splits <activity-id>
 
 # Training metrics
-garmin-cli training status
-garmin-cli training readiness
-garmin-cli training vo2max
-garmin-cli training hrv
+garmin training status
+garmin training readiness
+garmin training vo2max
+garmin training hrv
 
 # Check auth status
-garmin-cli auth status
+garmin auth status
 ```
 
 ## Command Reference
@@ -61,10 +61,10 @@ garmin-cli auth status
 
 | Flag        | Short | Description                              |
 |-------------|-------|------------------------------------------|
-| `--format`  | `-f`  | Output format: json, table, human        |
+| `--format`  | `-f`  | Output format: markdown, json            |
 | `--verbose` | `-v`  | Verbose output                           |
 | `--quiet`   | `-q`  | Suppress non-essential output            |
-| `--config`  | `-c`  | Path to config file                      |
+| `--config-dir` | `-c` | Config directory (tokens, settings)   |
 | `--profile` | `-p`  | Named profile to use                     |
 
 ### Commands
@@ -89,9 +89,9 @@ garmin-cli auth status
 
 ## Configuration
 
-Config stored in `~/.config/garmin-cli/config.toml` (planned).
+Config stored in `~/.config/garmin/config.toml` (planned).
 
-Tokens stored in `~/.config/garmin-cli/tokens/`.
+Tokens stored in `~/.config/garmin/tokens/`.
 
 ### Environment Variables
 

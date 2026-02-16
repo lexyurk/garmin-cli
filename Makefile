@@ -1,4 +1,4 @@
-BINARY_NAME := garmin-cli
+BINARY_NAME := garmin
 VERSION := $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
 LDFLAGS := -ldflags "-X main.version=$(VERSION)"
 

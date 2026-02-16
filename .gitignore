@@ -2,7 +2,7 @@
 _reference/
 
 # Binaries
-garmin-cli
+/garmin
 /bin/
 /dist/
 
