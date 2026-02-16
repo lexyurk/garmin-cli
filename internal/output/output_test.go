@@ -84,3 +84,19 @@ func TestTableTo_WritesSeparator(t *testing.T) {
 		t.Fatalf("expected separator line, got:\n%s", got)
 	}
 }
+
+func TestRenderKVTo_Table_SortsKeys(t *testing.T) {
+	var b bytes.Buffer
+	if err := RenderKVTo(&b, "table", "ignored", map[string]string{"b": "2", "a": "1"}); err != nil {
+		t.Fatalf("unexpected err: %v", err)
+	}
+	got := b.String()
+	aIdx := strings.Index(got, "a")
+	bIdx := strings.Index(got, "b")
+	if aIdx == -1 || bIdx == -1 {
+		t.Fatalf("expected keys in output, got:\n%s", got)
+	}
+	if aIdx > bIdx {
+		t.Fatalf("expected sorted keys, got:\n%s", got)
+	}
+}
