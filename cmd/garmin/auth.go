@@ -286,5 +286,3 @@ type authLogoutJSON struct {
 	OK      bool   `json:"ok"`
 	Profile string `json:"profile,omitempty"`
 }
-
-

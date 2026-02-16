@@ -55,4 +55,3 @@ func summarizeStatus(date string, raw map[string]any) StatusSummary {
 	}
 	return s
 }
-

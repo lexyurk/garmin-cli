@@ -48,4 +48,3 @@ func renderTableTo(w io.Writer, format string, headers []string, rows [][]string
 		return output.MarkdownTableTo(w, headers, rows)
 	}
 }
-

@@ -1,18 +1,18 @@
 package activities
 
 type DetailSummary struct {
-	ID             int64
-	Name           string
-	Type           string
-	StartTimeLocal string
-	DistanceMeters float64
+	ID              int64
+	Name            string
+	Type            string
+	StartTimeLocal  string
+	DistanceMeters  float64
 	DurationSeconds float64
-	Calories       int
-	AvgHR          int
-	MaxHR          int
-	ElevationGain  float64
-	VO2Max         float64
-	TrainingLoad   float64
+	Calories        int
+	AvgHR           int
+	MaxHR           int
+	ElevationGain   float64
+	VO2Max          float64
+	TrainingLoad    float64
 }
 
 func SummarizeDetail(id int64, raw map[string]any) DetailSummary {
@@ -88,4 +88,3 @@ func intFromAny(v any) int {
 		return 0
 	}
 }
-

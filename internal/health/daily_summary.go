@@ -42,4 +42,3 @@ func GetDailySummary(ctx context.Context, c *client.Client, date string) (DailyS
 	err := c.GetJSON(ctx, "/usersummary-service/usersummary/daily/", q, &resp)
 	return resp, err
 }
-

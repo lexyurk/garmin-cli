@@ -57,4 +57,3 @@ func summarizeReadiness(fallbackDate string, entries []ReadinessEntry) Readiness
 		RecoveryTime:     best.RecoveryTime,
 	}
 }
-

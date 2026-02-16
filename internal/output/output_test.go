@@ -84,4 +84,3 @@ func TestTableTo_WritesSeparator(t *testing.T) {
 		t.Fatalf("expected separator line, got:\n%s", got)
 	}
 }
-

@@ -27,4 +27,3 @@ func TestGetReadiness_SummarizeMostRecentTimestamp(t *testing.T) {
 		t.Fatalf("score: %#v", s.Score)
 	}
 }
-

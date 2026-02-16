@@ -76,4 +76,3 @@ func TestRoot_FlagsOverrideEnv(t *testing.T) {
 		t.Fatalf("expected flags override env, got:\n%s", got)
 	}
 }
-

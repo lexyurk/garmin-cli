@@ -32,10 +32,10 @@ type Summary struct {
 	StartTimeLocal  string  `json:"start_time_local,omitempty"`
 	Type            string  `json:"type"`
 	Name            string  `json:"name"`
-	DistanceMeters   float64 `json:"distance_meters"`
-	DurationSeconds  float64 `json:"duration_seconds"`
-	Calories         int     `json:"calories,omitempty"`
-	AvgHR            int     `json:"avg_hr,omitempty"`
+	DistanceMeters  float64 `json:"distance_meters"`
+	DurationSeconds float64 `json:"duration_seconds"`
+	Calories        int     `json:"calories,omitempty"`
+	AvgHR           int     `json:"avg_hr,omitempty"`
 }
 
 func List(ctx context.Context, c *client.Client, limit int, after, before, activityType string) ([]Summary, error) {
@@ -125,15 +125,15 @@ func (a ListItem) startDate() string {
 
 func (a ListItem) ToSummary() Summary {
 	return Summary{
-		ID:             a.ActivityID,
-		Date:           a.startDate(),
-		StartTimeLocal: a.StartTimeLocal,
-		Type:           a.ActivityType.TypeKey,
-		Name:           a.ActivityName,
+		ID:              a.ActivityID,
+		Date:            a.startDate(),
+		StartTimeLocal:  a.StartTimeLocal,
+		Type:            a.ActivityType.TypeKey,
+		Name:            a.ActivityName,
 		DistanceMeters:  a.Distance,
 		DurationSeconds: a.Duration,
-		Calories:       a.Calories,
-		AvgHR:          a.AverageHR,
+		Calories:        a.Calories,
+		AvgHR:           a.AverageHR,
 	}
 }
 
@@ -161,4 +161,3 @@ func parseDate(s string) (string, error) {
 	}
 	return t.Format("2006-01-02"), nil
 }
-

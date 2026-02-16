@@ -55,4 +55,3 @@ func (r HRVResponse) ToSummary(fallbackDate string) HRVSummary {
 	}
 	return s
 }
-

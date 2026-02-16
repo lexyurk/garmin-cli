@@ -36,8 +36,8 @@ type Client struct {
 }
 
 type Options struct {
-	HTTPClient *http.Client
-	BaseURL    string
+	HTTPClient    *http.Client
+	BaseURL       string
 	RefreshOAuth2 func(ctx context.Context, configDir string, oauth1 auth.OAuth1Token) (auth.OAuth2Token, error)
 	SaveSession   func(configDir, profile string, s *auth.Session) error
 }
@@ -71,11 +71,11 @@ func NewWithSession(configDir, profile string, session *auth.Session, opts Optio
 	}
 
 	return &Client{
-		httpClient: httpClient,
-		baseURL:    u,
-		configDir:  configDir,
-		profile:    profile,
-		session:    session,
+		httpClient:    httpClient,
+		baseURL:       u,
+		configDir:     configDir,
+		profile:       profile,
+		session:       session,
 		refreshOAuth2: refreshFn,
 		saveSession:   saveFn,
 	}
@@ -235,4 +235,3 @@ func stringsTitle(s string) string {
 func stringsTrim(s string) string {
 	return strings.TrimSpace(s)
 }
-

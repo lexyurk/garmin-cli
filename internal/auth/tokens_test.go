@@ -18,4 +18,3 @@ func TestOAuth2Token_Expired_WithSkew(t *testing.T) {
 		t.Fatalf("expected token to be not expired")
 	}
 }
-

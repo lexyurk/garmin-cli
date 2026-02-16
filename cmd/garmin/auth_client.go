@@ -72,4 +72,3 @@ type notAuthenticatedJSON struct {
 	Message string `json:"message"`
 	Profile string `json:"profile"`
 }
-

@@ -12,8 +12,8 @@ import (
 )
 
 const (
-	oauthConsumerURL  = "https://thegarth.s3.amazonaws.com/oauth_consumer.json"
-	consumerCacheTTL  = 7 * 24 * time.Hour
+	oauthConsumerURL   = "https://thegarth.s3.amazonaws.com/oauth_consumer.json"
+	consumerCacheTTL   = 7 * 24 * time.Hour
 	defaultHTTPTimeout = 20 * time.Second
 )
 
@@ -92,4 +92,3 @@ func loadCachedConsumer(path string) (oauthConsumer, bool) {
 		ConsumerSecret: cache.ConsumerSecret,
 	}, true
 }
-

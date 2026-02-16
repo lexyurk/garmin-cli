@@ -37,4 +37,3 @@ func TestList_ValidatesDateFlags(t *testing.T) {
 		t.Fatalf("expected error")
 	}
 }
-

@@ -13,15 +13,15 @@ type SleepDailyResponse struct {
 }
 
 type SleepDailyDTO struct {
-	CalendarDate            string          `json:"calendarDate"`
-	SleepTimeSeconds        *int            `json:"sleepTimeSeconds"`
-	DeepSleepSeconds        *int            `json:"deepSleepSeconds"`
-	LightSleepSeconds       *int            `json:"lightSleepSeconds"`
-	RemSleepSeconds         *int            `json:"remSleepSeconds"`
-	AwakeSleepSeconds       *int            `json:"awakeSleepSeconds"`
-	AverageSpO2Value        *float64        `json:"averageSpO2Value"`
-	AverageRespirationValue *float64        `json:"averageRespirationValue"`
-	SleepScores             SleepScores     `json:"sleepScores"`
+	CalendarDate            string      `json:"calendarDate"`
+	SleepTimeSeconds        *int        `json:"sleepTimeSeconds"`
+	DeepSleepSeconds        *int        `json:"deepSleepSeconds"`
+	LightSleepSeconds       *int        `json:"lightSleepSeconds"`
+	RemSleepSeconds         *int        `json:"remSleepSeconds"`
+	AwakeSleepSeconds       *int        `json:"awakeSleepSeconds"`
+	AverageSpO2Value        *float64    `json:"averageSpO2Value"`
+	AverageRespirationValue *float64    `json:"averageRespirationValue"`
+	SleepScores             SleepScores `json:"sleepScores"`
 }
 
 type SleepScores struct {
@@ -76,4 +76,3 @@ func (t SleepSummary) EndTimeLocal(now time.Time) time.Time {
 	_ = now
 	return time.Time{}
 }
-

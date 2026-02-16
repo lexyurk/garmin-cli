@@ -140,4 +140,3 @@ func sanitizeProfile(profile string) string {
 	}
 	return profile
 }
-

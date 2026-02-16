@@ -148,10 +148,10 @@ func newHealthHeartRateCmd(opts *globalOptions) *cobra.Command {
 			if len(out) == 1 {
 				r := out[0]
 				return renderKVTo(cmd.OutOrStdout(), opts.Format, "Heart rate", map[string]string{
-					"date":        r.Date,
-					"resting_hr":  formatMaybeInt(r.RestingHR),
-					"min_hr":      formatMaybeInt(r.MinHR),
-					"max_hr":      formatMaybeInt(r.MaxHR),
+					"date":       r.Date,
+					"resting_hr": formatMaybeInt(r.RestingHR),
+					"min_hr":     formatMaybeInt(r.MinHR),
+					"max_hr":     formatMaybeInt(r.MaxHR),
 				})
 			}
 			rows := make([][]string, 0, len(out))
@@ -344,12 +344,12 @@ func newHealthBodyBatteryCmd(opts *globalOptions) *cobra.Command {
 			if len(out) == 1 {
 				r := out[0]
 				return renderKVTo(cmd.OutOrStdout(), opts.Format, "Body battery", map[string]string{
-					"date":       r.Date,
-					"highest":    formatMaybeInt(r.Highest),
-					"lowest":     formatMaybeInt(r.Lowest),
+					"date":        r.Date,
+					"highest":     formatMaybeInt(r.Highest),
+					"lowest":      formatMaybeInt(r.Lowest),
 					"most_recent": formatMaybeInt(r.MostRecent),
-					"charged":    formatMaybeInt(r.Charged),
-					"drained":    formatMaybeInt(r.Drained),
+					"charged":     formatMaybeInt(r.Charged),
+					"drained":     formatMaybeInt(r.Drained),
 				})
 			}
 			rows := make([][]string, 0, len(out))
@@ -442,4 +442,3 @@ func orDash(s string) string {
 	}
 	return s
 }
-

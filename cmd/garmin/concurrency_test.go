@@ -30,4 +30,3 @@ func TestMapDatesConcurrently_ReturnsRootErrorNotContextCanceled(t *testing.T) {
 		t.Fatalf("expected root error, got: %v", err)
 	}
 }
-

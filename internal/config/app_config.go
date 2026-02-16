@@ -36,4 +36,3 @@ func LoadAppConfig(configDir string) (AppConfig, error) {
 
 	return cfg, nil
 }
-

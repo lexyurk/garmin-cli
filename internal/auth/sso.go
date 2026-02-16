@@ -40,12 +40,12 @@ func login(ctx context.Context, configDir, email, password string, promptMFA fun
 		"gauthHost":   {ssoBase},
 	}
 	signinParams := url.Values{
-		"id":                          {"gauth-widget"},
-		"embedWidget":                 {"true"},
-		"gauthHost":                   {ssoEmbed},
-		"service":                     {ssoEmbed},
-		"source":                      {ssoEmbed},
-		"redirectAfterAccountLoginUrl": {ssoEmbed},
+		"id":                              {"gauth-widget"},
+		"embedWidget":                     {"true"},
+		"gauthHost":                       {ssoEmbed},
+		"service":                         {ssoEmbed},
+		"source":                          {ssoEmbed},
+		"redirectAfterAccountLoginUrl":    {ssoEmbed},
 		"redirectAfterAccountCreationUrl": {ssoEmbed},
 	}
 
@@ -208,4 +208,3 @@ func extractTicket(html string) (string, error) {
 	}
 	return strings.TrimSpace(m[1]), nil
 }
-

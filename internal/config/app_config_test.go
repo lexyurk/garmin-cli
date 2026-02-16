@@ -32,4 +32,3 @@ func TestLoadAppConfig_ParsesTOML(t *testing.T) {
 		t.Fatalf("unexpected config: %#v", cfg)
 	}
 }
-

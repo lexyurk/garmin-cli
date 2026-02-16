@@ -6,8 +6,8 @@ import (
 	"time"
 
 	"github.com/lexyurk/garmin-cli/internal/output"
-	garmintraining "github.com/lexyurk/garmin-cli/internal/training"
 	"github.com/lexyurk/garmin-cli/internal/timeutil"
+	garmintraining "github.com/lexyurk/garmin-cli/internal/training"
 	"github.com/spf13/cobra"
 )
 
@@ -61,11 +61,11 @@ func newTrainingStatusCmd(opts *globalOptions) *cobra.Command {
 			if len(results) == 1 {
 				r := results[0]
 				return renderKVTo(cmd.OutOrStdout(), opts.Format, "Training status", map[string]string{
-					"date":      r.Date,
-					"status":    r.StatusPhrase,
-					"status_id": formatMaybeInt(r.StatusID),
+					"date":        r.Date,
+					"status":      r.StatusPhrase,
+					"status_id":   formatMaybeInt(r.StatusID),
 					"weekly_load": formatMaybeFloatPtr(r.WeeklyTrainingLoad, 0),
-					"trend":     r.LoadLevelTrend,
+					"trend":       r.LoadLevelTrend,
 				})
 			}
 			rows := make([][]string, 0, len(results))
@@ -218,12 +218,12 @@ func newTrainingHrvCmd(opts *globalOptions) *cobra.Command {
 			if len(results) == 1 {
 				r := results[0]
 				return renderKVTo(cmd.OutOrStdout(), opts.Format, "HRV", map[string]string{
-					"date":          r.Date,
-					"status":        r.Status,
-					"weekly_avg":    formatMaybeInt(r.WeeklyAvg),
+					"date":           r.Date,
+					"status":         r.Status,
+					"weekly_avg":     formatMaybeInt(r.WeeklyAvg),
 					"last_night_avg": formatMaybeInt(r.LastNightAvg),
-					"baseline_low":  formatMaybeFloatPtr(r.BaselineLowUpper, 0),
-					"baseline_high": formatMaybeFloatPtr(r.BaselineBalancedUpper, 0),
+					"baseline_low":   formatMaybeFloatPtr(r.BaselineLowUpper, 0),
+					"baseline_high":  formatMaybeFloatPtr(r.BaselineBalancedUpper, 0),
 				})
 			}
 			rows := make([][]string, 0, len(results))
@@ -257,4 +257,3 @@ type vo2maxJSON struct {
 	Running float64 `json:"running"`
 	Cycling float64 `json:"cycling"`
 }
-

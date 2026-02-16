@@ -153,4 +153,3 @@ func TestClient_RetriesOn429(t *testing.T) {
 		t.Fatalf("expected 2 attempts, got %d", attempts)
 	}
 }
-

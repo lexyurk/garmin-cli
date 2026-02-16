@@ -271,4 +271,3 @@ type activitiesSplitsJSON struct {
 	ActivityID int64 `json:"activity_id"`
 	Splits     any   `json:"splits"`
 }
-

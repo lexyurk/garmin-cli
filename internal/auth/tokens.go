@@ -26,4 +26,3 @@ func (t OAuth2Token) Expired(now time.Time) bool {
 	const skewSeconds int64 = 30
 	return now.Unix() >= (t.ExpiresAt - skewSeconds)
 }
-

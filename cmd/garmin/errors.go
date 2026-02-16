@@ -19,4 +19,3 @@ func renderedError(err error) error {
 	}
 	return &cliError{err: err, rendered: true}
 }
-

@@ -136,4 +136,3 @@ func oauth1HTTPClient(ctx context.Context, consumer oauthConsumer, token *oauth1
 	c.Timeout = defaultHTTPTimeout
 	return c
 }
-

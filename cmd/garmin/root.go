@@ -21,10 +21,10 @@ func NewRootCmd(version string) *cobra.Command {
 	opts := &globalOptions{}
 
 	cmd := &cobra.Command{
-		Use:   "garmin",
-		Short: "Garmin Connect from your terminal",
-		Long:  "Fast, ergonomic Garmin Connect CLI. Pipe it, script it, automate it.",
-		SilenceUsage: true,
+		Use:           "garmin",
+		Short:         "Garmin Connect from your terminal",
+		Long:          "Fast, ergonomic Garmin Connect CLI. Pipe it, script it, automate it.",
+		SilenceUsage:  true,
 		SilenceErrors: true,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			// Help should always work, even with broken config.
@@ -116,4 +116,3 @@ func normalizeFormat(s string) string {
 		return s
 	}
 }
-

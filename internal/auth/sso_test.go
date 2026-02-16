@@ -30,4 +30,3 @@ func TestExtractTicket(t *testing.T) {
 		t.Fatalf("unexpected ticket: %q", got)
 	}
 }
-

@@ -32,4 +32,3 @@ func TestHRVResponse_ToSummary(t *testing.T) {
 		t.Fatalf("baseline low: %#v", s.BaselineLowUpper)
 	}
 }
-

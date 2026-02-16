@@ -28,4 +28,3 @@ func saveJSON(path string, v any, perm fs.FileMode) error {
 	b = append(b, '\n')
 	return config.WriteFileAtomic(path, b, perm)
 }
-

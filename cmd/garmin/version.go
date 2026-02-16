@@ -15,4 +15,3 @@ func NewVersionCmd(version string) *cobra.Command {
 		},
 	}
 }
-

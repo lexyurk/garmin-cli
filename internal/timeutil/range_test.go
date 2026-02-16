@@ -68,4 +68,3 @@ func TestResolveDates_MutualExclusion(t *testing.T) {
 		t.Fatalf("expected error")
 	}
 }
-

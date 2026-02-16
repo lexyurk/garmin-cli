@@ -42,4 +42,3 @@ func TestSleepDailyResponse_ToSummary(t *testing.T) {
 		t.Fatalf("unexpected spO2: %#v", s.AvgSpO2)
 	}
 }
-

@@ -38,4 +38,3 @@ func TestDailySummary_Unmarshal(t *testing.T) {
 		t.Fatalf("bodyBatteryHighestValue: %#v", d.BodyBatteryHighestValue)
 	}
 }
-

@@ -21,4 +21,3 @@ func TestExtractSplits(t *testing.T) {
 		t.Fatalf("unexpected avg hr: %#v", splits[0])
 	}
 }
-

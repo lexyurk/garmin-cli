@@ -44,4 +44,3 @@ func TestRenderNotAuthenticatedString_Human(t *testing.T) {
 		t.Fatalf("expected status, got: %q", got)
 	}
 }
-
