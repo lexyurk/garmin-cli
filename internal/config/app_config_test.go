@@ -32,3 +32,15 @@ func TestLoadAppConfig_ParsesTOML(t *testing.T) {
 		t.Fatalf("unexpected config: %#v", cfg)
 	}
 }
+
+func TestLoadAppConfig_InvalidTOMLReturnsError(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.toml")
+	if err := os.WriteFile(path, []byte("this is not toml"), 0o600); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+
+	if _, err := LoadAppConfig(dir); err == nil {
+		t.Fatalf("expected error")
+	}
+}
