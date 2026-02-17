@@ -37,6 +37,22 @@ jobs:
       - name: Run tests
         run: make test
 
+      - name: Run coverage check (>= 80%)
+        run: make coverage-check
+
+      - name: Upload coverage artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: coverage.out
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          files: coverage.out
+          flags: unittests
+          fail_ci_if_error: false
+
       - name: Run tests (race)
         run: go test -race ./...
 

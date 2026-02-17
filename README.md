@@ -1,5 +1,8 @@
 # garmin
 
+[![CI](https://github.com/lexyurk/garmin-cli/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/lexyurk/garmin-cli/actions/workflows/ci.yml)
+[![Coverage](https://codecov.io/gh/lexyurk/garmin-cli/branch/main/graph/badge.svg)](https://codecov.io/gh/lexyurk/garmin-cli)
+
 Fast, ergonomic Garmin Connect CLI written in Go.
 
 > Inspired by [garmin-connect-cli](https://github.com/eddmann/garmin-connect-cli) (eddmann) but rewritten for speed and better UX.
