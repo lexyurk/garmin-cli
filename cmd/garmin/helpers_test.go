@@ -27,6 +27,20 @@ func TestHandleAuthedErrorTo_RendersNotAuthenticated(t *testing.T) {
 	}
 }
 
+func TestHandleAuthedErrorTo_NilAndNonAuthError(t *testing.T) {
+	var b bytes.Buffer
+	opts := &globalOptions{Format: "markdown", Profile: ""}
+
+	if err := handleAuthedErrorTo(&b, opts, nil); err != nil {
+		t.Fatalf("expected nil, got %v", err)
+	}
+
+	other := errors.New("other")
+	if err := handleAuthedErrorTo(&b, opts, other); err != other {
+		t.Fatalf("expected passthrough error, got %v", err)
+	}
+}
+
 func TestCliError_ErrorMethod(t *testing.T) {
 	e := renderedError(errors.New("boom"))
 	ce, ok := e.(*cliError)
@@ -35,6 +49,12 @@ func TestCliError_ErrorMethod(t *testing.T) {
 	}
 	if ce.Error() != "boom" {
 		t.Fatalf("unexpected Error(): %q", ce.Error())
+	}
+}
+
+func TestRenderedError_NilIsNil(t *testing.T) {
+	if err := renderedError(nil); err != nil {
+		t.Fatalf("expected nil, got %v", err)
 	}
 }
 

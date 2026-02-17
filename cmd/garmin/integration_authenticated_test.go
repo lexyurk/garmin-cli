@@ -412,6 +412,16 @@ func TestCLI_AuthenticatedFlows(t *testing.T) {
 		}
 	})
 
+	t.Run("activities splits markdown (pace)", func(t *testing.T) {
+		stdout, _, err := runCLI(t, cfgDir, "activities", "splits", "123")
+		if err != nil {
+			t.Fatalf("unexpected err: %v", err)
+		}
+		if !strings.Contains(stdout, "pace_min_per_km") || !strings.Contains(stdout, "5:00") {
+			t.Fatalf("unexpected output:\n%s", stdout)
+		}
+	})
+
 	t.Run("activities export to file", func(t *testing.T) {
 		outPath := filepath.Join(t.TempDir(), "activity.gpx")
 		stdout, stderr, err := runCLI(t, cfgDir, "activities", "export", "123", "--type", "gpx", "--out", outPath)
@@ -430,6 +440,35 @@ func TestCLI_AuthenticatedFlows(t *testing.T) {
 		}
 		if string(b) != "file-contents" {
 			t.Fatalf("unexpected file contents: %q", string(b))
+		}
+	})
+
+	t.Run("auth logout json", func(t *testing.T) {
+		// First, exercise the human/markdown rendering branch.
+		stdout, stderr, err := runCLI(t, cfgDir, "auth", "logout")
+		if err != nil {
+			t.Fatalf("unexpected err: %v\nstderr:\n%s", err, stderr)
+		}
+		if strings.TrimSpace(stderr) != "" {
+			t.Fatalf("expected empty stderr, got:\n%s", stderr)
+		}
+		if !strings.Contains(stdout, "## Logged out") {
+			t.Fatalf("unexpected output:\n%s", stdout)
+		}
+
+		// Then, exercise JSON output too.
+		stdout, stderr, err = runCLI(t, cfgDir, "--format", "json", "auth", "logout")
+		if err != nil {
+			t.Fatalf("unexpected err: %v\nstderr:\n%s", err, stderr)
+		}
+		if strings.TrimSpace(stderr) != "" {
+			t.Fatalf("expected empty stderr, got:\n%s", stderr)
+		}
+		if !strings.Contains(stdout, `"ok": true`) {
+			t.Fatalf("unexpected output:\n%s", stdout)
+		}
+		if _, err := os.Stat(filepath.Join(cfgDir, "tokens", "default", "oauth1_token.json")); !os.IsNotExist(err) {
+			t.Fatalf("expected tokens to be removed, stat err=%v", err)
 		}
 	})
 }
