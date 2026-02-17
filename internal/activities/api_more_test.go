@@ -171,7 +171,8 @@ func TestExport_UnsupportedType(t *testing.T) {
 
 func TestExport_Non2xxError(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusBadGateway)
+		// Use a 4xx so the client doesn't retry (5xx triggers retries and returns a request-level error).
+		w.WriteHeader(http.StatusBadRequest)
 		_, _ = w.Write([]byte("bad"))
 	}))
 	defer srv.Close()
