@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
+	"strings"
 
 	"github.com/lexyurk/garmin-cli/internal/auth"
 	"github.com/lexyurk/garmin-cli/internal/client"
@@ -31,14 +33,22 @@ func newAuthedClient(cmd *cobra.Command, opts *globalOptions) (*client.Client, e
 }
 
 func clientOptionsForCmd(cmd *cobra.Command, opts *globalOptions) client.Options {
+	var out client.Options
+
+	// Allows advanced users (and tests) to point the CLI at a different Connect API base URL.
+	// Example: http://localhost:8080
+	if baseURL := strings.TrimSpace(os.Getenv("GARMIN_CONNECTAPI_BASE_URL")); baseURL != "" {
+		out.BaseURL = baseURL
+	}
+
 	if opts == nil || !opts.Verbose || opts.Quiet {
-		return client.Options{}
+		return out
 	}
-	return client.Options{
-		Logf: func(format string, args ...any) {
-			_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "garmin verbose: "+format+"\n", args...)
-		},
+
+	out.Logf = func(format string, args ...any) {
+		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "garmin verbose: "+format+"\n", args...)
 	}
+	return out
 }
 
 func handleAuthedErrorTo(w io.Writer, opts *globalOptions, err error) error {
