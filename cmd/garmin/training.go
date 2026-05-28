@@ -2,6 +2,9 @@ package main
 
 import (
 	"context"
+	"fmt"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/lexyurk/garmin-cli/internal/output"
@@ -21,8 +24,55 @@ func NewTrainingCmd(opts *globalOptions) *cobra.Command {
 		newTrainingReadinessCmd(opts),
 		newTrainingVo2maxCmd(opts),
 		newTrainingHrvCmd(opts),
+		newTrainingFitnessAgeCmd(opts),
 	)
 
+	return cmd
+}
+
+func newTrainingFitnessAgeCmd(opts *globalOptions) *cobra.Command {
+	var date string
+
+	cmd := &cobra.Command{
+		Use:   "fitness-age",
+		Short: "Fitness age (a.k.a. health age) estimate",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			d := strings.TrimSpace(date)
+			if d == "" {
+				d = time.Now().In(time.Local).Format("2006-01-02")
+			} else if _, err := time.ParseInLocation("2006-01-02", d, time.Local); err != nil {
+				return fmt.Errorf("invalid --date %q (expected YYYY-MM-DD)", date)
+			}
+
+			c, err := newAuthedClient(cmd, opts)
+			if err != nil {
+				return err
+			}
+
+			ctx := cmd.Context()
+			fa, err := garmintraining.GetFitnessAge(ctx, c, d)
+			if err != nil {
+				return handleAuthedErrorTo(cmd.ErrOrStderr(), opts, err)
+			}
+
+			if opts.Format == "json" {
+				return output.JSONTo(cmd.OutOrStdout(), fa)
+			}
+
+			fields := map[string]string{
+				"date":                   fa.Date,
+				"fitness_age":            formatMaybeFloat(fa.FitnessAge, 1),
+				"chronological_age":      formatMaybeFloat(fa.ChronologicalAge, 1),
+				"achievable_fitness_age": formatMaybeFloat(fa.AchievableAge, 1),
+				"previous_fitness_age":   formatMaybeFloat(fa.PreviousAge, 1),
+			}
+			for k, v := range fa.Components {
+				fields["component_"+k] = strconv.FormatFloat(v, 'f', -1, 64)
+			}
+			return renderKVTo(cmd.OutOrStdout(), opts.Format, "Fitness age", fields)
+		},
+	}
+	cmd.Flags().StringVar(&date, "date", "", "Date (YYYY-MM-DD, default: today)")
 	return cmd
 }
 
