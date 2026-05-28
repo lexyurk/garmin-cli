@@ -19,9 +19,111 @@ func NewGearCmd(opts *globalOptions) *cobra.Command {
 		newGearListCmd(opts),
 		newGearGetCmd(opts),
 		newGearStatsCmd(opts),
+		newGearAddCmd(opts),
+		newGearRetireCmd(opts),
+		newGearRestoreCmd(opts),
 	)
 
 	return cmd
+}
+
+func newGearAddCmd(opts *globalOptions) *cobra.Command {
+	var gearType string
+	var name string
+	var make_ string
+	var model string
+	var maxKM float64
+	var begin string
+
+	cmd := &cobra.Command{
+		Use:   "add",
+		Short: "Add a new gear item (e.g. a pair of shoes)",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			c, err := newAuthedClient(cmd, opts)
+			if err != nil {
+				return err
+			}
+
+			ctx := cmd.Context()
+			pk, err := profile.UserProfilePK(ctx, c)
+			if err != nil {
+				return handleAuthedErrorTo(cmd.ErrOrStderr(), opts, err)
+			}
+
+			g, err := gear.Create(ctx, c, pk, gear.CreateOptions{
+				Type:      gearType,
+				Name:      name,
+				Make:      make_,
+				Model:     model,
+				MaxMeters: maxKM * 1000,
+				DateBegin: begin,
+			})
+			if err != nil {
+				return handleAuthedErrorTo(cmd.ErrOrStderr(), opts, err)
+			}
+
+			if opts.Format == "json" {
+				return output.JSONTo(cmd.OutOrStdout(), g)
+			}
+			return renderKVTo(cmd.OutOrStdout(), opts.Format, "Gear added", map[string]string{
+				"uuid":   orDash(g.UUID),
+				"name":   orDash(g.Name),
+				"type":   orDash(g.Type),
+				"status": orDash(g.Status),
+				"max_km": formatDistanceKM(g.MaxMeters),
+			})
+		},
+	}
+	cmd.Flags().StringVar(&gearType, "type", "Shoes", "Gear type (Shoes, Bike, Other)")
+	cmd.Flags().StringVar(&name, "name", "", "Display name (required)")
+	cmd.Flags().StringVar(&make_, "make", "", "Manufacturer")
+	cmd.Flags().StringVar(&model, "model", "", "Model")
+	cmd.Flags().Float64Var(&maxKM, "max-km", 0, "Retirement distance in km (0 = none)")
+	cmd.Flags().StringVar(&begin, "begin", "", "Start date (YYYY-MM-DD, default: today)")
+	_ = cmd.MarkFlagRequired("name")
+	return cmd
+}
+
+func newGearRetireCmd(opts *globalOptions) *cobra.Command {
+	return newGearStatusCmd(opts, "retire", "Retire a gear item", "retired", "Gear retired")
+}
+
+func newGearRestoreCmd(opts *globalOptions) *cobra.Command {
+	return newGearStatusCmd(opts, "restore", "Restore (un-retire) a gear item", "active", "Gear restored")
+}
+
+func newGearStatusCmd(opts *globalOptions, use, short, status, title string) *cobra.Command {
+	return &cobra.Command{
+		Use:   use + " [uuid]",
+		Short: short,
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			c, err := newAuthedClient(cmd, opts)
+			if err != nil {
+				return err
+			}
+
+			ctx := cmd.Context()
+			pk, err := profile.UserProfilePK(ctx, c)
+			if err != nil {
+				return handleAuthedErrorTo(cmd.ErrOrStderr(), opts, err)
+			}
+
+			g, err := gear.SetStatus(ctx, c, pk, args[0], status)
+			if err != nil {
+				return handleAuthedErrorTo(cmd.ErrOrStderr(), opts, err)
+			}
+
+			if opts.Format == "json" {
+				return output.JSONTo(cmd.OutOrStdout(), g)
+			}
+			return renderKVTo(cmd.OutOrStdout(), opts.Format, title, map[string]string{
+				"uuid":   orDash(g.UUID),
+				"name":   orDash(g.Name),
+				"status": orDash(g.Status),
+			})
+		},
+	}
 }
 
 func newGearListCmd(opts *globalOptions) *cobra.Command {

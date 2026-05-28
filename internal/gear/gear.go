@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/lexyurk/garmin-cli/internal/client"
 )
@@ -136,6 +137,95 @@ func WithStats(ctx context.Context, c *client.Client, gears []Gear) []Gear {
 		gears[i].Activities = &a
 	}
 	return gears
+}
+
+// CreateOptions describes a new gear item.
+type CreateOptions struct {
+	Type      string  // gear type name, e.g. "Shoes", "Bike" (default "Shoes")
+	Name      string  // user-facing name (required)
+	Make      string  // optional manufacturer
+	Model     string  // optional model
+	MaxMeters float64 // optional retirement threshold (0 = none)
+	DateBegin string  // YYYY-MM-DD (default today)
+}
+
+// Create adds a new gear item.
+//
+// The gear-service write contract is not officially documented; the request
+// body mirrors the gear object returned by reads. Garmin may reject unexpected
+// fields, in which case the API error is surfaced verbatim.
+func Create(ctx context.Context, c *client.Client, userProfilePk int64, opts CreateOptions) (Gear, error) {
+	name := strings.TrimSpace(opts.Name)
+	if name == "" {
+		return Gear{}, fmt.Errorf("gear name is required")
+	}
+	typeName := strings.TrimSpace(opts.Type)
+	if typeName == "" {
+		typeName = "Shoes"
+	}
+	begin := strings.TrimSpace(opts.DateBegin)
+	if begin == "" {
+		begin = time.Now().In(time.Local).Format("2006-01-02")
+	}
+
+	body := map[string]any{
+		"userProfilePk":   userProfilePk,
+		"gearTypeName":    typeName,
+		"gearMakeName":    strings.TrimSpace(opts.Make),
+		"gearModelName":   strings.TrimSpace(opts.Model),
+		"customMakeModel": name,
+		"displayName":     name,
+		"maximumMeters":   opts.MaxMeters,
+		"dateBegin":       begin + "T00:00:00.0",
+		"gearStatusName":  "active",
+	}
+
+	var out gearRaw
+	if err := c.PostJSON(ctx, "/gear-service/gear", nil, body, &out); err != nil {
+		return Gear{}, err
+	}
+	return out.toGear(), nil
+}
+
+// SetStatus retires ("retired") or restores ("active") a gear item.
+//
+// It re-PUTs the existing gear object with the status field changed, preserving
+// all other fields. The gear-service write contract is reverse-engineered.
+func SetStatus(ctx context.Context, c *client.Client, userProfilePk int64, uuid, status string) (Gear, error) {
+	uuid = strings.TrimSpace(uuid)
+	if uuid == "" {
+		return Gear{}, fmt.Errorf("gear uuid is required")
+	}
+
+	var raw []map[string]any
+	q := url.Values{"userProfilePk": {strconv.FormatInt(userProfilePk, 10)}}
+	if err := c.GetJSON(ctx, "/gear-service/gear/filterGear", q, &raw); err != nil {
+		return Gear{}, err
+	}
+
+	var item map[string]any
+	for _, g := range raw {
+		if s, _ := g["uuid"].(string); strings.EqualFold(s, uuid) {
+			item = g
+			break
+		}
+	}
+	if item == nil {
+		return Gear{}, fmt.Errorf("gear %q not found", uuid)
+	}
+
+	item["gearStatusName"] = status
+	if status == "retired" {
+		item["dateEnd"] = time.Now().In(time.Local).Format("2006-01-02") + "T00:00:00.0"
+	} else {
+		item["dateEnd"] = nil
+	}
+
+	var out gearRaw
+	if err := c.PutJSON(ctx, "/gear-service/gear/"+url.PathEscape(uuid), nil, item, &out); err != nil {
+		return Gear{}, err
+	}
+	return out.toGear(), nil
 }
 
 // FilterByStatus returns gear matching a status filter.

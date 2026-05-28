@@ -2,6 +2,7 @@ package gear
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -105,5 +106,88 @@ func TestGet_FindsByUUIDWithStats(t *testing.T) {
 	}
 	if g.Activities == nil || *g.Activities != 3 {
 		t.Fatalf("activities: %#v", g.Activities)
+	}
+}
+
+func TestCreate_SendsExpectedBody(t *testing.T) {
+	var gotMethod, gotPath string
+	var gotBody map[string]any
+	c := testClient(t, func(w http.ResponseWriter, r *http.Request) {
+		gotMethod = r.Method
+		gotPath = r.URL.Path
+		_ = json.NewDecoder(r.Body).Decode(&gotBody)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"uuid":"new1","displayName":"My Pegasus","gearTypeName":"Shoes","gearStatusName":"active","maximumMeters":800000}`))
+	})
+
+	g, err := Create(context.Background(), c, 987, CreateOptions{Name: "My Pegasus", Make: "Nike", MaxMeters: 800000})
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	if gotMethod != http.MethodPost || gotPath != "/gear-service/gear" {
+		t.Fatalf("unexpected request: %s %s", gotMethod, gotPath)
+	}
+	if gotBody["customMakeModel"] != "My Pegasus" || gotBody["displayName"] != "My Pegasus" {
+		t.Fatalf("name not in body: %#v", gotBody)
+	}
+	if gotBody["gearTypeName"] != "Shoes" {
+		t.Fatalf("default type not Shoes: %#v", gotBody["gearTypeName"])
+	}
+	if gotBody["gearStatusName"] != "active" {
+		t.Fatalf("status not active: %#v", gotBody["gearStatusName"])
+	}
+	if g.UUID != "new1" || g.Name != "My Pegasus" {
+		t.Fatalf("unexpected created gear: %#v", g)
+	}
+}
+
+func TestCreate_RequiresName(t *testing.T) {
+	c := testClient(t, func(w http.ResponseWriter, r *http.Request) {
+		t.Fatalf("should not call API without a name")
+	})
+	if _, err := Create(context.Background(), c, 1, CreateOptions{}); err == nil {
+		t.Fatalf("expected error for missing name")
+	}
+}
+
+func TestSetStatus_FlipsStatusAndPuts(t *testing.T) {
+	var putBody map[string]any
+	var putPath string
+	c := testClient(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/gear-service/gear/filterGear":
+			_, _ = w.Write([]byte(`[{"uuid":"u1","displayName":"Pegasus","gearStatusName":"active"}]`))
+		case r.Method == http.MethodPut:
+			putPath = r.URL.Path
+			_ = json.NewDecoder(r.Body).Decode(&putBody)
+			_, _ = w.Write([]byte(`{"uuid":"u1","displayName":"Pegasus","gearStatusName":"retired"}`))
+		default:
+			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
+		}
+	})
+
+	g, err := SetStatus(context.Background(), c, 987, "u1", "retired")
+	if err != nil {
+		t.Fatalf("SetStatus: %v", err)
+	}
+	if putPath != "/gear-service/gear/u1" {
+		t.Fatalf("put path: %s", putPath)
+	}
+	if putBody["gearStatusName"] != "retired" {
+		t.Fatalf("status not flipped in body: %#v", putBody)
+	}
+	if g.Status != "retired" {
+		t.Fatalf("returned status: %q", g.Status)
+	}
+}
+
+func TestSetStatus_NotFound(t *testing.T) {
+	c := testClient(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`[]`))
+	})
+	if _, err := SetStatus(context.Background(), c, 1, "missing", "retired"); err == nil {
+		t.Fatalf("expected not found error")
 	}
 }
