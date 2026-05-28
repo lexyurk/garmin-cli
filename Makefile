@@ -2,7 +2,9 @@ BINARY_NAME := garmin
 VERSION := $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
 LDFLAGS := -ldflags "-X main.version=$(VERSION)"
 
-.PHONY: build install test lint clean
+GORELEASER := go run github.com/goreleaser/goreleaser/v2@latest
+
+.PHONY: build install test lint clean snapshot release-check
 
 ## build: Build the binary
 build:
@@ -20,9 +22,17 @@ test:
 lint:
 	golangci-lint run ./...
 
+## release-check: Validate the GoReleaser config
+release-check:
+	$(GORELEASER) check
+
+## snapshot: Build a local cross-platform snapshot release (no publish)
+snapshot:
+	$(GORELEASER) release --snapshot --clean
+
 ## clean: Remove build artifacts
 clean:
-	rm -rf bin/
+	rm -rf bin/ dist/
 
 ## help: Show this help
 help:
