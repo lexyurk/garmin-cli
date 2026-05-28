@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"io"
 	"os"
@@ -26,8 +27,131 @@ func NewActivitiesCmd(opts *globalOptions) *cobra.Command {
 		newActivitiesGetCmd(opts),
 		newActivitiesSplitsCmd(opts),
 		newActivitiesExportCmd(opts),
+		newActivitiesUpdateCmd(opts),
+		newActivitiesDeleteCmd(opts),
 	)
 
+	return cmd
+}
+
+func newActivitiesUpdateCmd(opts *globalOptions) *cobra.Command {
+	var name string
+	var description string
+	var activityType string
+
+	cmd := &cobra.Command{
+		Use:   "update [activity-id]",
+		Short: "Update an activity's name, description, or type",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			id, err := strconv.ParseInt(args[0], 10, 64)
+			if err != nil {
+				return fmt.Errorf("invalid activity id %q", args[0])
+			}
+
+			nameSet := cmd.Flags().Changed("name")
+			descSet := cmd.Flags().Changed("description")
+			typeSet := cmd.Flags().Changed("type")
+			if !nameSet && !descSet && !typeSet {
+				return fmt.Errorf("specify at least one of --name, --description, --type")
+			}
+
+			c, err := newAuthedClient(cmd, opts)
+			if err != nil {
+				return err
+			}
+
+			ctx := cmd.Context()
+			up := garminactivities.UpdateOptions{}
+			if nameSet {
+				up.Name = &name
+			}
+			if descSet {
+				up.Description = &description
+			}
+			if typeSet {
+				types, err := garminactivities.GetActivityTypes(ctx, c)
+				if err != nil {
+					return handleAuthedErrorTo(cmd.ErrOrStderr(), opts, err)
+				}
+				t, err := garminactivities.ResolveType(types, activityType)
+				if err != nil {
+					return err
+				}
+				up.Type = &t
+			}
+
+			if err := garminactivities.Update(ctx, c, id, up); err != nil {
+				return handleAuthedErrorTo(cmd.ErrOrStderr(), opts, err)
+			}
+
+			fields := map[string]string{"id": args[0], "status": "updated"}
+			if nameSet {
+				fields["name"] = name
+			}
+			if descSet {
+				fields["description"] = description
+			}
+			if typeSet {
+				fields["type"] = activityType
+			}
+			return renderKVTo(cmd.OutOrStdout(), opts.Format, "Activity updated", fields)
+		},
+	}
+
+	cmd.Flags().StringVar(&name, "name", "", "New activity name")
+	cmd.Flags().StringVar(&description, "description", "", "New description")
+	cmd.Flags().StringVar(&activityType, "type", "", "New activity type key (e.g. running, cycling)")
+	return cmd
+}
+
+func newActivitiesDeleteCmd(opts *globalOptions) *cobra.Command {
+	var force bool
+
+	cmd := &cobra.Command{
+		Use:   "delete [activity-id]",
+		Short: "Delete an activity (irreversible)",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			id, err := strconv.ParseInt(args[0], 10, 64)
+			if err != nil {
+				return fmt.Errorf("invalid activity id %q", args[0])
+			}
+
+			if !force {
+				inf, ok := cmd.InOrStdin().(*os.File)
+				if ok && term.IsTerminal(int(inf.Fd())) {
+					_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Delete activity %s? This cannot be undone. [y/N]: ", args[0])
+					line, _ := bufio.NewReader(cmd.InOrStdin()).ReadString('\n')
+					switch strings.ToLower(strings.TrimSpace(line)) {
+					case "y", "yes":
+						// confirmed
+					default:
+						return fmt.Errorf("aborted")
+					}
+				} else {
+					return fmt.Errorf("refusing to delete without --force")
+				}
+			}
+
+			c, err := newAuthedClient(cmd, opts)
+			if err != nil {
+				return err
+			}
+
+			ctx := cmd.Context()
+			if err := garminactivities.Delete(ctx, c, id); err != nil {
+				return handleAuthedErrorTo(cmd.ErrOrStderr(), opts, err)
+			}
+
+			return renderKVTo(cmd.OutOrStdout(), opts.Format, "Activity deleted", map[string]string{
+				"id":     args[0],
+				"status": "deleted",
+			})
+		},
+	}
+
+	cmd.Flags().BoolVar(&force, "force", false, "Skip confirmation prompt")
 	return cmd
 }
 
