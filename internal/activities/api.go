@@ -108,6 +108,30 @@ func List(ctx context.Context, c *client.Client, limit int, after, before, activ
 	return out, nil
 }
 
+// ListByGear returns activities recorded with a given gear item (most recent first).
+func ListByGear(ctx context.Context, c *client.Client, gearUUID string, limit int) ([]Summary, error) {
+	gearUUID = strings.TrimSpace(gearUUID)
+	if gearUUID == "" {
+		return nil, fmt.Errorf("gear uuid is required")
+	}
+	if limit <= 0 {
+		limit = 20
+	}
+	q := url.Values{
+		"start": {"0"},
+		"limit": {strconv.Itoa(limit)},
+	}
+	var page []ListItem
+	if err := c.GetJSON(ctx, fmt.Sprintf("/activitylist-service/activities/%s/gear", url.PathEscape(gearUUID)), q, &page); err != nil {
+		return nil, err
+	}
+	out := make([]Summary, 0, len(page))
+	for _, item := range page {
+		out = append(out, item.ToSummary())
+	}
+	return out, nil
+}
+
 func GetRaw(ctx context.Context, c *client.Client, activityID int64) (map[string]any, error) {
 	var raw map[string]any
 	if err := c.GetJSON(ctx, fmt.Sprintf("/activity-service/activity/%d", activityID), nil, &raw); err != nil {

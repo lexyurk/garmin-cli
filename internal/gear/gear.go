@@ -263,6 +263,20 @@ func ForActivity(ctx context.Context, c *client.Client, activityID int64) ([]Gea
 	return out, nil
 }
 
+// SetDefault marks a gear item as the default for an activity type, or clears
+// it. activityTypeID is the activity type's numeric id (see activity types).
+func SetDefault(ctx context.Context, c *client.Client, uuid string, activityTypeID int, isDefault bool) error {
+	uuid = strings.TrimSpace(uuid)
+	if uuid == "" {
+		return fmt.Errorf("gear uuid is required")
+	}
+	base := fmt.Sprintf("/gear-service/gear/%s/activityType/%d", url.PathEscape(uuid), activityTypeID)
+	if isDefault {
+		return c.SendJSON(ctx, http.MethodPut, base+"/default/true", nil, nil, nil)
+	}
+	return c.Delete(ctx, base, nil)
+}
+
 // FilterByStatus returns gear matching a status filter.
 // status: "active" (default), "retired", or "" / "all" for everything.
 func FilterByStatus(gears []Gear, status string) []Gear {

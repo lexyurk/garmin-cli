@@ -236,3 +236,23 @@ func TestForActivity_FiltersByActivityId(t *testing.T) {
 		t.Fatalf("unexpected: %#v", gears)
 	}
 }
+
+func TestSetDefault_PutAndDelete(t *testing.T) {
+	var method, path string
+	c := testClient(t, func(w http.ResponseWriter, r *http.Request) {
+		method, path = r.Method, r.URL.Path
+		w.WriteHeader(http.StatusOK)
+	})
+	if err := SetDefault(context.Background(), c, "u1", 1, true); err != nil {
+		t.Fatalf("SetDefault: %v", err)
+	}
+	if method != http.MethodPut || path != "/gear-service/gear/u1/activityType/1/default/true" {
+		t.Fatalf("set: %s %s", method, path)
+	}
+	if err := SetDefault(context.Background(), c, "u1", 1, false); err != nil {
+		t.Fatalf("SetDefault clear: %v", err)
+	}
+	if method != http.MethodDelete || path != "/gear-service/gear/u1/activityType/1" {
+		t.Fatalf("clear: %s %s", method, path)
+	}
+}

@@ -86,3 +86,20 @@ func TestDelete_SendsDelete(t *testing.T) {
 		t.Fatalf("unexpected request: %s %s", method, path)
 	}
 }
+
+func TestListByGear_Path(t *testing.T) {
+	c := manageTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/activitylist-service/activities/abc-uuid/gear" {
+			t.Fatalf("path: %s", r.URL.Path)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`[{"activityId":7,"activityName":"Run","activityType":{"typeKey":"running"},"distance":5000,"duration":1500}]`))
+	})
+	out, err := ListByGear(context.Background(), c, "abc-uuid", 10)
+	if err != nil {
+		t.Fatalf("ListByGear: %v", err)
+	}
+	if len(out) != 1 || out[0].ID != 7 || out[0].Type != "running" {
+		t.Fatalf("unexpected: %#v", out)
+	}
+}

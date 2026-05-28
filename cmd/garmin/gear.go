@@ -3,7 +3,9 @@ package main
 import (
 	"fmt"
 	"strconv"
+	"strings"
 
+	garminactivities "github.com/lexyurk/garmin-cli/internal/activities"
 	"github.com/lexyurk/garmin-cli/internal/gear"
 	"github.com/lexyurk/garmin-cli/internal/output"
 	"github.com/lexyurk/garmin-cli/internal/profile"
@@ -26,8 +28,101 @@ func NewGearCmd(opts *globalOptions) *cobra.Command {
 		newGearLinkCmd(opts),
 		newGearUnlinkCmd(opts),
 		newGearForActivityCmd(opts),
+		newGearActivitiesCmd(opts),
+		newGearSetDefaultCmd(opts, "set-default", "Make a gear item the default for an activity type", true),
+		newGearSetDefaultCmd(opts, "clear-default", "Clear a gear item as default for an activity type", false),
 	)
 
+	return cmd
+}
+
+func newGearActivitiesCmd(opts *globalOptions) *cobra.Command {
+	var limit int
+
+	cmd := &cobra.Command{
+		Use:   "activities [uuid]",
+		Short: "List activities recorded with a gear item",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if limit <= 0 {
+				return fmt.Errorf("--limit must be > 0")
+			}
+
+			c, err := newAuthedClient(cmd, opts)
+			if err != nil {
+				return err
+			}
+
+			ctx := cmd.Context()
+			out, err := garminactivities.ListByGear(ctx, c, args[0], limit)
+			if err != nil {
+				return handleAuthedErrorTo(cmd.ErrOrStderr(), opts, err)
+			}
+
+			if opts.Format == "json" {
+				return output.JSONTo(cmd.OutOrStdout(), out)
+			}
+			rows := make([][]string, 0, len(out))
+			for _, a := range out {
+				rows = append(rows, []string{
+					strconv.FormatInt(a.ID, 10),
+					a.StartTimeLocal,
+					a.Type,
+					a.Name,
+					formatDistanceKM(a.DistanceMeters),
+					formatDurationSecondsFloat(a.DurationSeconds),
+				})
+			}
+			return renderTableTo(cmd.OutOrStdout(), opts.Format, []string{"id", "start", "type", "name", "dist_km", "duration"}, rows)
+		},
+	}
+	cmd.Flags().IntVar(&limit, "limit", 20, "Number of activities to return")
+	return cmd
+}
+
+func newGearSetDefaultCmd(opts *globalOptions, use, short string, isDefault bool) *cobra.Command {
+	var activityType string
+
+	cmd := &cobra.Command{
+		Use:   use + " [uuid]",
+		Short: short,
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if strings.TrimSpace(activityType) == "" {
+				return fmt.Errorf("--activity-type is required (e.g. running)")
+			}
+
+			c, err := newAuthedClient(cmd, opts)
+			if err != nil {
+				return err
+			}
+
+			ctx := cmd.Context()
+			types, err := garminactivities.GetActivityTypes(ctx, c)
+			if err != nil {
+				return handleAuthedErrorTo(cmd.ErrOrStderr(), opts, err)
+			}
+			t, err := garminactivities.ResolveType(types, activityType)
+			if err != nil {
+				return err
+			}
+
+			if err := gear.SetDefault(ctx, c, args[0], t.TypeID, isDefault); err != nil {
+				return handleAuthedErrorTo(cmd.ErrOrStderr(), opts, err)
+			}
+
+			status := "default-set"
+			if !isDefault {
+				status = "default-cleared"
+			}
+			return renderKVTo(cmd.OutOrStdout(), opts.Format, "Gear default", map[string]string{
+				"gear":          args[0],
+				"activity_type": t.TypeKey,
+				"status":        status,
+			})
+		},
+	}
+	cmd.Flags().StringVar(&activityType, "activity-type", "", "Activity type key (e.g. running, cycling)")
 	return cmd
 }
 
