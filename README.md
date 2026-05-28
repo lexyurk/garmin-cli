@@ -84,9 +84,10 @@ garmin profile
 garmin gear list                 # active gear
 garmin gear list --all --stats   # include retired + cumulative mileage
 garmin gear add --name "Pegasus 40" --make Nike --max-km 800
-garmin gear link <gear-uuid> <activity-id>     # assign shoes to a run
+garmin gear link "Pegasus 40" --last           # tag your most recent run
+garmin gear link "Pegasus 40" <activity-id>    # or a specific activity
 garmin gear for-activity <activity-id>
-garmin gear retire <gear-uuid>
+garmin gear retire "Pegasus 40"
 
 # Workouts (plan and build)
 garmin workouts list
