@@ -3,13 +3,16 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 
 	"github.com/lexyurk/garmin-cli/internal/output"
 	"github.com/lexyurk/garmin-cli/internal/workouts"
 	"github.com/spf13/cobra"
+	"golang.org/x/term"
 )
 
 func NewWorkoutsCmd(opts *globalOptions) *cobra.Command {
@@ -25,8 +28,96 @@ func NewWorkoutsCmd(opts *globalOptions) *cobra.Command {
 		newWorkoutsUpdateCmd(opts),
 		newWorkoutsDeleteCmd(opts),
 		newWorkoutsScheduleCmd(opts),
+		newWorkoutsUnscheduleCmd(opts),
+		newWorkoutsExportCmd(opts),
 	)
 
+	return cmd
+}
+
+func newWorkoutsUnscheduleCmd(opts *globalOptions) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "unschedule [schedule-id]",
+		Short: "Remove a scheduled workout occurrence (by schedule id)",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			id, err := strconv.ParseInt(args[0], 10, 64)
+			if err != nil {
+				return fmt.Errorf("invalid schedule id %q", args[0])
+			}
+
+			c, err := newAuthedClient(cmd, opts)
+			if err != nil {
+				return err
+			}
+
+			ctx := cmd.Context()
+			if err := workouts.Unschedule(ctx, c, id); err != nil {
+				return handleAuthedErrorTo(cmd.ErrOrStderr(), opts, err)
+			}
+
+			return renderKVTo(cmd.OutOrStdout(), opts.Format, "Workout unscheduled", map[string]string{
+				"schedule_id": args[0],
+				"status":      "unscheduled",
+			})
+		},
+	}
+	return cmd
+}
+
+func newWorkoutsExportCmd(opts *globalOptions) *cobra.Command {
+	var outPath string
+	var force bool
+
+	cmd := &cobra.Command{
+		Use:   "export [workout-id]",
+		Short: "Download a workout's FIT file (for sideloading to a device)",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			id, err := strconv.ParseInt(args[0], 10, 64)
+			if err != nil {
+				return fmt.Errorf("invalid workout id %q", args[0])
+			}
+
+			c, err := newAuthedClient(cmd, opts)
+			if err != nil {
+				return err
+			}
+
+			w := cmd.OutOrStdout()
+			var f *os.File
+			if strings.TrimSpace(outPath) != "" {
+				if err := os.MkdirAll(filepath.Dir(outPath), 0o755); err != nil {
+					return err
+				}
+				flags := os.O_CREATE | os.O_WRONLY | os.O_TRUNC
+				if !force {
+					flags = os.O_CREATE | os.O_WRONLY | os.O_EXCL
+				}
+				f, err = os.OpenFile(outPath, flags, 0o644)
+				if err != nil {
+					return err
+				}
+				defer f.Close()
+				w = f
+			} else if outf, ok := w.(*os.File); ok && term.IsTerminal(int(outf.Fd())) {
+				return fmt.Errorf("refusing to write FIT file to terminal; use --out or redirect stdout")
+			}
+
+			ctx := cmd.Context()
+			if err := workouts.ExportFIT(ctx, c, id, w); err != nil {
+				return handleAuthedErrorTo(cmd.ErrOrStderr(), opts, err)
+			}
+
+			if f != nil && !opts.Quiet {
+				_, _ = io.WriteString(cmd.ErrOrStderr(), "downloaded\n")
+			}
+			return nil
+		},
+	}
+
+	cmd.Flags().StringVar(&outPath, "out", "", "Write to file instead of stdout")
+	cmd.Flags().BoolVar(&force, "force", false, "Overwrite output file if it exists")
 	return cmd
 }
 

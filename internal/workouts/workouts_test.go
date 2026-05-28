@@ -1,6 +1,7 @@
 package workouts
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"net/http"
@@ -167,5 +168,39 @@ func TestSchedule_RejectsBadDate(t *testing.T) {
 	})
 	if _, err := Schedule(context.Background(), c, 111, "06/01/2026"); err == nil {
 		t.Fatalf("expected error for bad date")
+	}
+}
+
+func TestExportFIT_StreamsBody(t *testing.T) {
+	var path string
+	c := testClient(t, func(w http.ResponseWriter, r *http.Request) {
+		path = r.URL.Path
+		w.Header().Set("Content-Type", "application/octet-stream")
+		_, _ = w.Write([]byte("FITDATA"))
+	})
+
+	var buf bytes.Buffer
+	if err := ExportFIT(context.Background(), c, 111, &buf); err != nil {
+		t.Fatalf("ExportFIT: %v", err)
+	}
+	if path != "/workout-service/workout/FIT/111" {
+		t.Fatalf("path: %s", path)
+	}
+	if buf.String() != "FITDATA" {
+		t.Fatalf("body: %q", buf.String())
+	}
+}
+
+func TestUnschedule_SendsDelete(t *testing.T) {
+	var method, path string
+	c := testClient(t, func(w http.ResponseWriter, r *http.Request) {
+		method, path = r.Method, r.URL.Path
+		w.WriteHeader(http.StatusNoContent)
+	})
+	if err := Unschedule(context.Background(), c, 9001); err != nil {
+		t.Fatalf("Unschedule: %v", err)
+	}
+	if method != http.MethodDelete || path != "/workout-service/schedule/9001" {
+		t.Fatalf("unexpected request: %s %s", method, path)
 	}
 }
