@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/lexyurk/garmin-cli/internal/output"
+	"github.com/lexyurk/garmin-cli/internal/profile"
 	"github.com/lexyurk/garmin-cli/internal/timeutil"
 	garmintraining "github.com/lexyurk/garmin-cli/internal/training"
 	"github.com/spf13/cobra"
@@ -25,9 +26,60 @@ func NewTrainingCmd(opts *globalOptions) *cobra.Command {
 		newTrainingVo2maxCmd(opts),
 		newTrainingHrvCmd(opts),
 		newTrainingFitnessAgeCmd(opts),
+		newTrainingRacePredictionsCmd(opts),
 	)
 
 	return cmd
+}
+
+func newTrainingRacePredictionsCmd(opts *globalOptions) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "race-predictions",
+		Short: "Predicted race times (5K, 10K, half, marathon)",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			c, err := newAuthedClient(cmd, opts)
+			if err != nil {
+				return err
+			}
+
+			ctx := cmd.Context()
+			p, err := profile.Get(ctx, c)
+			if err != nil {
+				return handleAuthedErrorTo(cmd.ErrOrStderr(), opts, err)
+			}
+
+			rp, err := garmintraining.GetRacePredictions(ctx, c, p.DisplayName)
+			if err != nil {
+				return handleAuthedErrorTo(cmd.ErrOrStderr(), opts, err)
+			}
+
+			if opts.Format == "json" {
+				return output.JSONTo(cmd.OutOrStdout(), rp)
+			}
+			return renderKVTo(cmd.OutOrStdout(), opts.Format, "Race predictions", map[string]string{
+				"date":     orDash(rp.CalendarDate),
+				"5k":       formatSecondsClock(rp.Time5KSeconds),
+				"10k":      formatSecondsClock(rp.Time10KSeconds),
+				"half":     formatSecondsClock(rp.TimeHalfSeconds),
+				"marathon": formatSecondsClock(rp.TimeMarathonSeconds),
+			})
+		},
+	}
+	return cmd
+}
+
+func formatSecondsClock(sec *int) string {
+	if sec == nil || *sec <= 0 {
+		return "—"
+	}
+	s := *sec
+	h := s / 3600
+	m := (s % 3600) / 60
+	ss := s % 60
+	if h > 0 {
+		return fmt.Sprintf("%d:%02d:%02d", h, m, ss)
+	}
+	return fmt.Sprintf("%d:%02d", m, ss)
 }
 
 func newTrainingFitnessAgeCmd(opts *globalOptions) *cobra.Command {
