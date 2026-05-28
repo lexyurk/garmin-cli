@@ -4,6 +4,7 @@ package gear
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
@@ -226,6 +227,40 @@ func SetStatus(ctx context.Context, c *client.Client, userProfilePk int64, uuid,
 		return Gear{}, err
 	}
 	return out.toGear(), nil
+}
+
+// Link assigns a gear item to a completed activity.
+func Link(ctx context.Context, c *client.Client, uuid string, activityID int64) error {
+	uuid = strings.TrimSpace(uuid)
+	if uuid == "" {
+		return fmt.Errorf("gear uuid is required")
+	}
+	path := fmt.Sprintf("/gear-service/gear/link/%s/activity/%d", url.PathEscape(uuid), activityID)
+	return c.SendJSON(ctx, http.MethodPut, path, nil, nil, nil)
+}
+
+// Unlink removes a gear item from an activity.
+func Unlink(ctx context.Context, c *client.Client, uuid string, activityID int64) error {
+	uuid = strings.TrimSpace(uuid)
+	if uuid == "" {
+		return fmt.Errorf("gear uuid is required")
+	}
+	path := fmt.Sprintf("/gear-service/gear/unlink/%s/activity/%d", url.PathEscape(uuid), activityID)
+	return c.SendJSON(ctx, http.MethodPut, path, nil, nil, nil)
+}
+
+// ForActivity returns the gear linked to a given activity.
+func ForActivity(ctx context.Context, c *client.Client, activityID int64) ([]Gear, error) {
+	q := url.Values{"activityId": {strconv.FormatInt(activityID, 10)}}
+	var raw []gearRaw
+	if err := c.GetJSON(ctx, "/gear-service/gear/filterGear", q, &raw); err != nil {
+		return nil, err
+	}
+	out := make([]Gear, 0, len(raw))
+	for _, g := range raw {
+		out = append(out, g.toGear())
+	}
+	return out, nil
 }
 
 // FilterByStatus returns gear matching a status filter.

@@ -191,3 +191,48 @@ func TestSetStatus_NotFound(t *testing.T) {
 		t.Fatalf("expected not found error")
 	}
 }
+
+func TestLink_PutsNoBody(t *testing.T) {
+	var method, path string
+	c := testClient(t, func(w http.ResponseWriter, r *http.Request) {
+		method, path = r.Method, r.URL.Path
+		w.WriteHeader(http.StatusOK)
+	})
+	if err := Link(context.Background(), c, "u1", 555); err != nil {
+		t.Fatalf("Link: %v", err)
+	}
+	if method != http.MethodPut || path != "/gear-service/gear/link/u1/activity/555" {
+		t.Fatalf("unexpected request: %s %s", method, path)
+	}
+}
+
+func TestUnlink_UsesUnlinkPath(t *testing.T) {
+	var method, path string
+	c := testClient(t, func(w http.ResponseWriter, r *http.Request) {
+		method, path = r.Method, r.URL.Path
+		w.WriteHeader(http.StatusOK)
+	})
+	if err := Unlink(context.Background(), c, "u1", 555); err != nil {
+		t.Fatalf("Unlink: %v", err)
+	}
+	if method != http.MethodPut || path != "/gear-service/gear/unlink/u1/activity/555" {
+		t.Fatalf("unexpected request: %s %s", method, path)
+	}
+}
+
+func TestForActivity_FiltersByActivityId(t *testing.T) {
+	c := testClient(t, func(w http.ResponseWriter, r *http.Request) {
+		if got := r.URL.Query().Get("activityId"); got != "555" {
+			t.Fatalf("activityId: %q", got)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`[{"uuid":"u1","displayName":"Pegasus","gearTypeName":"Shoes","gearStatusName":"active"}]`))
+	})
+	gears, err := ForActivity(context.Background(), c, 555)
+	if err != nil {
+		t.Fatalf("ForActivity: %v", err)
+	}
+	if len(gears) != 1 || gears[0].Name != "Pegasus" {
+		t.Fatalf("unexpected: %#v", gears)
+	}
+}

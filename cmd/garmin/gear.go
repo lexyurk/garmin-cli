@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"strconv"
 
 	"github.com/lexyurk/garmin-cli/internal/gear"
 	"github.com/lexyurk/garmin-cli/internal/output"
@@ -22,8 +23,93 @@ func NewGearCmd(opts *globalOptions) *cobra.Command {
 		newGearAddCmd(opts),
 		newGearRetireCmd(opts),
 		newGearRestoreCmd(opts),
+		newGearLinkCmd(opts),
+		newGearUnlinkCmd(opts),
+		newGearForActivityCmd(opts),
 	)
 
+	return cmd
+}
+
+func newGearLinkCmd(opts *globalOptions) *cobra.Command {
+	return newGearLinkLikeCmd(opts, "link", "Assign a gear item to an activity", false)
+}
+
+func newGearUnlinkCmd(opts *globalOptions) *cobra.Command {
+	return newGearLinkLikeCmd(opts, "unlink", "Remove a gear item from an activity", true)
+}
+
+func newGearLinkLikeCmd(opts *globalOptions, use, short string, unlink bool) *cobra.Command {
+	return &cobra.Command{
+		Use:   use + " [uuid] [activity-id]",
+		Short: short,
+		Args:  cobra.ExactArgs(2),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			activityID, err := strconv.ParseInt(args[1], 10, 64)
+			if err != nil {
+				return fmt.Errorf("invalid activity id %q", args[1])
+			}
+
+			c, err := newAuthedClient(cmd, opts)
+			if err != nil {
+				return err
+			}
+
+			ctx := cmd.Context()
+			if unlink {
+				err = gear.Unlink(ctx, c, args[0], activityID)
+			} else {
+				err = gear.Link(ctx, c, args[0], activityID)
+			}
+			if err != nil {
+				return handleAuthedErrorTo(cmd.ErrOrStderr(), opts, err)
+			}
+
+			action := "linked"
+			if unlink {
+				action = "unlinked"
+			}
+			return renderKVTo(cmd.OutOrStdout(), opts.Format, "Gear "+action, map[string]string{
+				"gear":        args[0],
+				"activity_id": args[1],
+				"status":      action,
+			})
+		},
+	}
+}
+
+func newGearForActivityCmd(opts *globalOptions) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "for-activity [activity-id]",
+		Short: "Show gear linked to an activity",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			activityID, err := strconv.ParseInt(args[0], 10, 64)
+			if err != nil {
+				return fmt.Errorf("invalid activity id %q", args[0])
+			}
+
+			c, err := newAuthedClient(cmd, opts)
+			if err != nil {
+				return err
+			}
+
+			ctx := cmd.Context()
+			gears, err := gear.ForActivity(ctx, c, activityID)
+			if err != nil {
+				return handleAuthedErrorTo(cmd.ErrOrStderr(), opts, err)
+			}
+
+			if opts.Format == "json" {
+				return output.JSONTo(cmd.OutOrStdout(), gears)
+			}
+			rows := make([][]string, 0, len(gears))
+			for _, g := range gears {
+				rows = append(rows, []string{g.UUID, g.Name, orDash(g.Type), orDash(g.Status)})
+			}
+			return renderTableTo(cmd.OutOrStdout(), opts.Format, []string{"uuid", "name", "type", "status"}, rows)
+		},
+	}
 	return cmd
 }
 
