@@ -6,11 +6,27 @@ import (
 	"strings"
 
 	garminactivities "github.com/lexyurk/garmin-cli/internal/activities"
+	"github.com/lexyurk/garmin-cli/internal/client"
 	"github.com/lexyurk/garmin-cli/internal/gear"
 	"github.com/lexyurk/garmin-cli/internal/output"
 	"github.com/lexyurk/garmin-cli/internal/profile"
 	"github.com/spf13/cobra"
 )
+
+// resolveGear turns a gear name-or-uuid into a gear item, returning the user's
+// profile pk alongside it. Auth/lookup errors are already rendered to stderr.
+func resolveGear(cmd *cobra.Command, opts *globalOptions, c *client.Client, query string) (gear.Gear, int64, error) {
+	ctx := cmd.Context()
+	pk, err := profile.UserProfilePK(ctx, c)
+	if err != nil {
+		return gear.Gear{}, 0, handleAuthedErrorTo(cmd.ErrOrStderr(), opts, err)
+	}
+	g, err := gear.Resolve(ctx, c, pk, query)
+	if err != nil {
+		return gear.Gear{}, 0, handleAuthedErrorTo(cmd.ErrOrStderr(), opts, err)
+	}
+	return g, pk, nil
+}
 
 func NewGearCmd(opts *globalOptions) *cobra.Command {
 	cmd := &cobra.Command{
@@ -40,7 +56,7 @@ func newGearActivitiesCmd(opts *globalOptions) *cobra.Command {
 	var limit int
 
 	cmd := &cobra.Command{
-		Use:   "activities [uuid]",
+		Use:   "activities [gear]",
 		Short: "List activities recorded with a gear item",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -53,8 +69,13 @@ func newGearActivitiesCmd(opts *globalOptions) *cobra.Command {
 				return err
 			}
 
+			g, _, err := resolveGear(cmd, opts, c, args[0])
+			if err != nil {
+				return err
+			}
+
 			ctx := cmd.Context()
-			out, err := garminactivities.ListByGear(ctx, c, args[0], limit)
+			out, err := garminactivities.ListByGear(ctx, c, g.UUID, limit)
 			if err != nil {
 				return handleAuthedErrorTo(cmd.ErrOrStderr(), opts, err)
 			}
@@ -84,7 +105,7 @@ func newGearSetDefaultCmd(opts *globalOptions, use, short string, isDefault bool
 	var activityType string
 
 	cmd := &cobra.Command{
-		Use:   use + " [uuid]",
+		Use:   use + " [gear]",
 		Short: short,
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -93,6 +114,11 @@ func newGearSetDefaultCmd(opts *globalOptions, use, short string, isDefault bool
 			}
 
 			c, err := newAuthedClient(cmd, opts)
+			if err != nil {
+				return err
+			}
+
+			g, _, err := resolveGear(cmd, opts, c, args[0])
 			if err != nil {
 				return err
 			}
@@ -107,7 +133,7 @@ func newGearSetDefaultCmd(opts *globalOptions, use, short string, isDefault bool
 				return err
 			}
 
-			if err := gear.SetDefault(ctx, c, args[0], t.TypeID, isDefault); err != nil {
+			if err := gear.SetDefault(ctx, c, g.UUID, t.TypeID, isDefault); err != nil {
 				return handleAuthedErrorTo(cmd.ErrOrStderr(), opts, err)
 			}
 
@@ -116,7 +142,8 @@ func newGearSetDefaultCmd(opts *globalOptions, use, short string, isDefault bool
 				status = "default-cleared"
 			}
 			return renderKVTo(cmd.OutOrStdout(), opts.Format, "Gear default", map[string]string{
-				"gear":          args[0],
+				"gear":          orDash(g.Name),
+				"uuid":          g.UUID,
 				"activity_type": t.TypeKey,
 				"status":        status,
 			})
@@ -156,17 +183,12 @@ func newGearLinkLikeCmd(opts *globalOptions, use, short string, unlink bool) *co
 				return err
 			}
 
+			g, _, err := resolveGear(cmd, opts, c, args[0])
+			if err != nil {
+				return err
+			}
+
 			ctx := cmd.Context()
-			pk, err := profile.UserProfilePK(ctx, c)
-			if err != nil {
-				return handleAuthedErrorTo(cmd.ErrOrStderr(), opts, err)
-			}
-
-			g, err := gear.Resolve(ctx, c, pk, args[0])
-			if err != nil {
-				return handleAuthedErrorTo(cmd.ErrOrStderr(), opts, err)
-			}
-
 			var activityID int64
 			if last {
 				latest, err := garminactivities.Latest(ctx, c)
@@ -309,7 +331,7 @@ func newGearRestoreCmd(opts *globalOptions) *cobra.Command {
 
 func newGearStatusCmd(opts *globalOptions, use, short, status, title string) *cobra.Command {
 	return &cobra.Command{
-		Use:   use + " [uuid]",
+		Use:   use + " [gear]",
 		Short: short,
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -318,13 +340,13 @@ func newGearStatusCmd(opts *globalOptions, use, short, status, title string) *co
 				return err
 			}
 
-			ctx := cmd.Context()
-			pk, err := profile.UserProfilePK(ctx, c)
+			resolved, pk, err := resolveGear(cmd, opts, c, args[0])
 			if err != nil {
-				return handleAuthedErrorTo(cmd.ErrOrStderr(), opts, err)
+				return err
 			}
 
-			g, err := gear.SetStatus(ctx, c, pk, args[0], status)
+			ctx := cmd.Context()
+			g, err := gear.SetStatus(ctx, c, pk, resolved.UUID, status)
 			if err != nil {
 				return handleAuthedErrorTo(cmd.ErrOrStderr(), opts, err)
 			}
@@ -411,7 +433,7 @@ func newGearListCmd(opts *globalOptions) *cobra.Command {
 
 func newGearGetCmd(opts *globalOptions) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "get [uuid]",
+		Use:   "get [gear]",
 		Short: "Get gear details (with cumulative stats)",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -454,7 +476,7 @@ func newGearGetCmd(opts *globalOptions) *cobra.Command {
 
 func newGearStatsCmd(opts *globalOptions) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "stats [uuid]",
+		Use:   "stats [gear]",
 		Short: "Cumulative distance/activities for a gear item",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -463,8 +485,13 @@ func newGearStatsCmd(opts *globalOptions) *cobra.Command {
 				return err
 			}
 
+			g, _, err := resolveGear(cmd, opts, c, args[0])
+			if err != nil {
+				return err
+			}
+
 			ctx := cmd.Context()
-			st, err := gear.GetStats(ctx, c, args[0])
+			st, err := gear.GetStats(ctx, c, g.UUID)
 			if err != nil {
 				return handleAuthedErrorTo(cmd.ErrOrStderr(), opts, err)
 			}
@@ -473,7 +500,8 @@ func newGearStatsCmd(opts *globalOptions) *cobra.Command {
 				return output.JSONTo(cmd.OutOrStdout(), st)
 			}
 			return renderKVTo(cmd.OutOrStdout(), opts.Format, "Gear stats", map[string]string{
-				"uuid":             args[0],
+				"uuid":             g.UUID,
+				"name":             orDash(g.Name),
 				"total_km":         formatDistanceKM(st.TotalMeters),
 				"total_activities": fmt.Sprintf("%d", st.TotalActivities),
 			})

@@ -105,24 +105,17 @@ func GetStats(ctx context.Context, c *client.Client, uuid string) (Stats, error)
 	return Stats{TotalMeters: raw.TotalDistance, TotalActivities: raw.TotalActivities}, nil
 }
 
-// Get returns a single gear item (with stats) by uuid.
-func Get(ctx context.Context, c *client.Client, userProfilePk int64, uuid string) (Gear, error) {
-	uuid = strings.TrimSpace(uuid)
-	gears, err := List(ctx, c, userProfilePk)
+// Get returns a single gear item (with stats) by uuid or name.
+func Get(ctx context.Context, c *client.Client, userProfilePk int64, query string) (Gear, error) {
+	g, err := Resolve(ctx, c, userProfilePk, query)
 	if err != nil {
 		return Gear{}, err
 	}
-	for _, g := range gears {
-		if strings.EqualFold(g.UUID, uuid) {
-			st, err := GetStats(ctx, c, g.UUID)
-			if err == nil {
-				g.TotalMeters = &st.TotalMeters
-				g.Activities = &st.TotalActivities
-			}
-			return g, nil
-		}
+	if st, err := GetStats(ctx, c, g.UUID); err == nil {
+		g.TotalMeters = &st.TotalMeters
+		g.Activities = &st.TotalActivities
 	}
-	return Gear{}, fmt.Errorf("gear %q not found", uuid)
+	return g, nil
 }
 
 // WithStats fetches per-gear cumulative stats and populates each gear in place.

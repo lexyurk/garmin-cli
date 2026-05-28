@@ -10,6 +10,7 @@ import (
 	"time"
 
 	garminactivities "github.com/lexyurk/garmin-cli/internal/activities"
+	"github.com/lexyurk/garmin-cli/internal/gear"
 	"github.com/lexyurk/garmin-cli/internal/output"
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
@@ -303,6 +304,15 @@ func newActivitiesGetCmd(opts *globalOptions) *cobra.Command {
 				// Keep it small and stable; callers can use --format json for full detail.
 				fields["vo2max"] = formatMaybeFloat0(s.VO2Max, 1)
 				fields["training_load"] = formatMaybeFloat0(s.TrainingLoad, 0)
+			}
+
+			// Best-effort: surface linked gear (don't fail the whole get if it errors).
+			if gears, gerr := gear.ForActivity(ctx, c, id); gerr == nil && len(gears) > 0 {
+				names := make([]string, 0, len(gears))
+				for _, g := range gears {
+					names = append(names, g.Name)
+				}
+				fields["gear"] = strings.Join(names, ", ")
 			}
 
 			return renderKVTo(cmd.OutOrStdout(), opts.Format, "Activity", fields)
