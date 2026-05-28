@@ -15,6 +15,28 @@ Fast, ergonomic Garmin Connect CLI written in Go.
 
 ## Installation
 
+### Download a release
+
+Grab a prebuilt binary for your OS/arch from the
+[Releases](https://github.com/lexyurk/garmin-cli/releases) page (linux, macOS,
+and Windows; amd64 and arm64), then extract and put `garmin` on your `PATH`:
+
+```bash
+tar -xzf garmin-cli_*_linux_amd64.tar.gz
+sudo mv garmin /usr/local/bin/
+garmin version
+```
+
+### Go install
+
+```bash
+# latest release (recommended — reports a real version)
+go install github.com/lexyurk/garmin-cli/cmd/garmin@latest
+
+# a specific release
+go install github.com/lexyurk/garmin-cli/cmd/garmin@v0.1.0
+```
+
 ### From source
 
 ```bash
@@ -24,12 +46,6 @@ make install
 
 # Ensure $GOPATH/bin is on your PATH
 export PATH="$(go env GOPATH)/bin:$PATH"
-```
-
-### Go install
-
-```bash
-go install github.com/lexyurk/garmin-cli/cmd/garmin@latest
 ```
 
 ## Quick Start
@@ -258,6 +274,26 @@ make test     # Run tests
 make lint     # Run linter
 make install  # Install to $GOPATH/bin
 ```
+
+## Releasing
+
+Releases are automated with [GoReleaser](https://goreleaser.com). Pushing a
+semver tag triggers the `Release` workflow, which cross-compiles binaries and
+publishes a GitHub Release with archives, `checksums.txt`, and a changelog.
+
+```bash
+# Validate the config and dry-run a build locally first
+make release-check
+make snapshot          # builds into ./dist (nothing is published)
+
+# Cut a release
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+The version is injected into `garmin version` via ldflags, so released and
+`go install`ed binaries report their real version (local `make build` uses
+`git describe`).
 
 ## License
 
