@@ -57,3 +57,23 @@ func TestList_RequiresDisplayName(t *testing.T) {
 		t.Fatalf("expected error for empty display name")
 	}
 }
+
+func TestListRaw_PassesThrough(t *testing.T) {
+	c := testClient(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/personalrecord-service/personalrecord/prs/runner" {
+			t.Fatalf("path: %s", r.URL.Path)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`[{"typeId":3,"value":1350}]`))
+	})
+	raw, err := ListRaw(context.Background(), c, "runner")
+	if err != nil {
+		t.Fatalf("ListRaw: %v", err)
+	}
+	if len(raw) != 1 || raw[0]["typeId"].(float64) != 3 {
+		t.Fatalf("unexpected: %#v", raw)
+	}
+	if _, err := ListRaw(context.Background(), c, "  "); err == nil {
+		t.Fatalf("expected error for empty display name")
+	}
+}

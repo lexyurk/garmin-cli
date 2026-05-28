@@ -49,3 +49,17 @@ func TestList_ParsesDevices(t *testing.T) {
 		t.Fatalf("device1 name fallback: %#v", list[1])
 	}
 }
+
+func TestListRaw_PassesThrough(t *testing.T) {
+	c := testClient(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`[{"deviceId":111,"productDisplayName":"Forerunner 965","extra":"kept"}]`))
+	})
+	raw, err := ListRaw(context.Background(), c)
+	if err != nil {
+		t.Fatalf("ListRaw: %v", err)
+	}
+	if len(raw) != 1 || raw[0]["extra"] != "kept" {
+		t.Fatalf("expected raw passthrough, got: %#v", raw)
+	}
+}

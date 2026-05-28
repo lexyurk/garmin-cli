@@ -93,3 +93,38 @@ func TestAdd_Validates(t *testing.T) {
 		t.Fatalf("expected error for bad date")
 	}
 }
+
+func TestLatest_ReturnsMostRecentAndErrors(t *testing.T) {
+	c := testClient(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"dateWeightList":[
+		  {"calendarDate":"2026-05-01","weight":76000},
+		  {"calendarDate":"2026-05-28","weight":75000}
+		]}`))
+	})
+	w, err := Latest(context.Background(), c, 30)
+	if err != nil {
+		t.Fatalf("Latest: %v", err)
+	}
+	if w.Date != "2026-05-28" || w.WeightKG == nil || *w.WeightKG != 75 {
+		t.Fatalf("unexpected latest: %#v", w)
+	}
+
+	empty := testClient(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"dateWeightList":[]}`))
+	})
+	if _, err := Latest(context.Background(), empty, 0); err == nil {
+		t.Fatalf("expected error when no weigh-ins")
+	}
+}
+
+func TestList_RejectsBadDates(t *testing.T) {
+	c := testClient(t, func(w http.ResponseWriter, r *http.Request) { t.Fatalf("should not call API") })
+	if _, err := List(context.Background(), c, "bad", "2026-05-28"); err == nil {
+		t.Fatalf("expected error for bad start date")
+	}
+	if _, err := List(context.Background(), c, "2026-05-01", "nope"); err == nil {
+		t.Fatalf("expected error for bad end date")
+	}
+}

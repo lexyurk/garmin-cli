@@ -256,3 +256,53 @@ func TestSetDefault_PutAndDelete(t *testing.T) {
 		t.Fatalf("clear: %s %s", method, path)
 	}
 }
+
+func TestResolve_ByUUIDNameAndAmbiguity(t *testing.T) {
+	handler := func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`[
+		  {"uuid":"u1","displayName":"Pegasus 40","gearStatusName":"active"},
+		  {"uuid":"u2","displayName":"Pegasus Trail","gearStatusName":"active"},
+		  {"uuid":"u3","displayName":"Clifton 9","gearStatusName":"retired"}
+		]`))
+	}
+	if g, err := Resolve(context.Background(), testClient(t, handler), 1, "u3"); err != nil || g.UUID != "u3" {
+		t.Fatalf("uuid: %#v err=%v", g, err)
+	}
+	if g, err := Resolve(context.Background(), testClient(t, handler), 1, "clifton 9"); err != nil || g.UUID != "u3" {
+		t.Fatalf("exact name: %#v err=%v", g, err)
+	}
+	if g, err := Resolve(context.Background(), testClient(t, handler), 1, "Trail"); err != nil || g.UUID != "u2" {
+		t.Fatalf("substring: %#v err=%v", g, err)
+	}
+	if _, err := Resolve(context.Background(), testClient(t, handler), 1, "Pegasus"); err == nil {
+		t.Fatalf("expected ambiguity error")
+	}
+	if _, err := Resolve(context.Background(), testClient(t, handler), 1, "Nimbus"); err == nil {
+		t.Fatalf("expected no-match error")
+	}
+	if _, err := Resolve(context.Background(), testClient(t, handler), 1, "  "); err == nil {
+		t.Fatalf("expected error for empty query")
+	}
+}
+
+func TestWithStats_PopulatesTotals(t *testing.T) {
+	c := testClient(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"totalDistance":5000,"totalActivities":3}`))
+	})
+	gears := WithStats(context.Background(), c, []Gear{{UUID: "u1"}})
+	if gears[0].TotalMeters == nil || *gears[0].TotalMeters != 5000 {
+		t.Fatalf("total meters: %#v", gears[0].TotalMeters)
+	}
+	if gears[0].Activities == nil || *gears[0].Activities != 3 {
+		t.Fatalf("activities: %#v", gears[0].Activities)
+	}
+}
+
+func TestGetStats_RequiresUUID(t *testing.T) {
+	c := testClient(t, func(w http.ResponseWriter, r *http.Request) { t.Fatalf("should not call API") })
+	if _, err := GetStats(context.Background(), c, "  "); err == nil {
+		t.Fatalf("expected error for empty uuid")
+	}
+}
