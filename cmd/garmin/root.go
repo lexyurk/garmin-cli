@@ -122,6 +122,7 @@ func NewRootCmd(version string) *cobra.Command {
 		NewWeightCmd(opts),
 		NewDevicesCmd(opts),
 		NewRecordsCmd(opts),
+		NewTodayCmd(opts),
 		NewCompletionCmd(),
 		NewVersionCmd(version),
 	)
