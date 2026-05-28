@@ -2,8 +2,10 @@
 package client
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -175,6 +177,71 @@ func (c *Client) GetJSON(ctx context.Context, path string, query url.Values, out
 	}
 	defer resp.Body.Close()
 
+	if err := checkStatus(resp); err != nil {
+		return err
+	}
+
+	return json.NewDecoder(resp.Body).Decode(out)
+}
+
+// SendJSON performs a write request (POST/PUT/DELETE/...) with an optional
+// JSON-encoded body and optionally decodes a JSON response.
+//
+// If body is nil, no request body is sent. If out is nil (or the server replies
+// 204/empty), the response body is drained and discarded.
+func (c *Client) SendJSON(ctx context.Context, method, path string, query url.Values, body, out any) error {
+	var r io.Reader
+	contentType := ""
+	if body != nil {
+		buf, err := json.Marshal(body)
+		if err != nil {
+			return err
+		}
+		r = bytes.NewReader(buf)
+		contentType = "application/json"
+	}
+
+	resp, err := c.Do(ctx, method, path, query, r, contentType)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if err := checkStatus(resp); err != nil {
+		return err
+	}
+
+	if out == nil || resp.StatusCode == http.StatusNoContent {
+		_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, 1<<20))
+		return nil
+	}
+
+	// Some write endpoints return an empty body even on success.
+	if err := json.NewDecoder(resp.Body).Decode(out); err != nil {
+		if errors.Is(err, io.EOF) {
+			return nil
+		}
+		return err
+	}
+	return nil
+}
+
+// PostJSON sends a POST request with a JSON body and optionally decodes the response.
+func (c *Client) PostJSON(ctx context.Context, path string, query url.Values, body, out any) error {
+	return c.SendJSON(ctx, http.MethodPost, path, query, body, out)
+}
+
+// PutJSON sends a PUT request with a JSON body and optionally decodes the response.
+func (c *Client) PutJSON(ctx context.Context, path string, query url.Values, body, out any) error {
+	return c.SendJSON(ctx, http.MethodPut, path, query, body, out)
+}
+
+// Delete sends a DELETE request and discards any response body.
+func (c *Client) Delete(ctx context.Context, path string, query url.Values) error {
+	return c.SendJSON(ctx, http.MethodDelete, path, query, nil, nil)
+}
+
+func checkStatus(resp *http.Response) error {
 	if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden {
 		b, _ := io.ReadAll(io.LimitReader(resp.Body, 16<<10))
 		return fmt.Errorf("%w: %s: %s", auth.ErrNotAuthenticated, resp.Status, stringsTrim(string(b)))
@@ -183,8 +250,7 @@ func (c *Client) GetJSON(ctx context.Context, path string, query url.Values, out
 		b, _ := io.ReadAll(io.LimitReader(resp.Body, 16<<10))
 		return fmt.Errorf("garmin connectapi error: %s: %s", resp.Status, stringsTrim(string(b)))
 	}
-
-	return json.NewDecoder(resp.Body).Decode(out)
+	return nil
 }
 
 func (c *Client) ensureFreshOAuth2(ctx context.Context) error {

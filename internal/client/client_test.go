@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -235,5 +236,115 @@ func TestClient_RetriesOn429_HonorsRetryAfter(t *testing.T) {
 	}
 	if slept < 2*time.Second {
 		t.Fatalf("expected sleep to honor Retry-After >=2s, got %s", slept)
+	}
+}
+
+func newTestSession() *auth.Session {
+	return &auth.Session{
+		OAuth1: auth.OAuth1Token{OAuthToken: "o1", OAuthTokenSecret: "o1s"},
+		OAuth2: auth.OAuth2Token{TokenType: "bearer", AccessToken: "ok", ExpiresAt: time.Now().Add(time.Hour).Unix()},
+	}
+}
+
+func TestClient_SendJSON_PostBodyAndDecode(t *testing.T) {
+	var gotMethod, gotContentType, gotBody string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotMethod = r.Method
+		gotContentType = r.Header.Get("Content-Type")
+		b, _ := io.ReadAll(r.Body)
+		gotBody = strings.TrimSpace(string(b))
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"id":42}`))
+	}))
+	defer srv.Close()
+
+	c := NewWithSession("ignored", "default", newTestSession(), Options{HTTPClient: srv.Client(), BaseURL: srv.URL})
+
+	var out struct {
+		ID int `json:"id"`
+	}
+	in := map[string]any{"name": "shoe"}
+	if err := c.PostJSON(context.Background(), "/x", nil, in, &out); err != nil {
+		t.Fatalf("PostJSON error: %v", err)
+	}
+	if gotMethod != http.MethodPost {
+		t.Fatalf("expected POST, got %s", gotMethod)
+	}
+	if gotContentType != "application/json" {
+		t.Fatalf("expected json content-type, got %q", gotContentType)
+	}
+	if gotBody != `{"name":"shoe"}` {
+		t.Fatalf("unexpected request body: %q", gotBody)
+	}
+	if out.ID != 42 {
+		t.Fatalf("expected decoded id 42, got %d", out.ID)
+	}
+}
+
+func TestClient_SendJSON_EmptyBodyOK(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK) // empty body
+	}))
+	defer srv.Close()
+
+	c := NewWithSession("ignored", "default", newTestSession(), Options{HTTPClient: srv.Client(), BaseURL: srv.URL})
+
+	var out map[string]any
+	if err := c.PutJSON(context.Background(), "/x", nil, map[string]any{"a": 1}, &out); err != nil {
+		t.Fatalf("expected nil error on empty 200 body, got %v", err)
+	}
+}
+
+func TestClient_Delete_SendsDeleteAndIgnoresBody(t *testing.T) {
+	var gotMethod string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotMethod = r.Method
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer srv.Close()
+
+	c := NewWithSession("ignored", "default", newTestSession(), Options{HTTPClient: srv.Client(), BaseURL: srv.URL})
+
+	if err := c.Delete(context.Background(), "/x/1", nil); err != nil {
+		t.Fatalf("Delete error: %v", err)
+	}
+	if gotMethod != http.MethodDelete {
+		t.Fatalf("expected DELETE, got %s", gotMethod)
+	}
+}
+
+func TestClient_SendJSON_MapsErrorStatus(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusBadRequest)
+		_, _ = w.Write([]byte(`{"message":"bad"}`))
+	}))
+	defer srv.Close()
+
+	c := NewWithSession("ignored", "default", newTestSession(), Options{HTTPClient: srv.Client(), BaseURL: srv.URL})
+
+	err := c.PostJSON(context.Background(), "/x", nil, map[string]any{}, nil)
+	if err == nil {
+		t.Fatalf("expected error")
+	}
+	if errors.Is(err, auth.ErrNotAuthenticated) {
+		t.Fatalf("did not expect ErrNotAuthenticated for 400")
+	}
+	if !strings.Contains(err.Error(), "400") {
+		t.Fatalf("expected status in error, got: %v", err)
+	}
+}
+
+func TestClient_SendJSON_Maps403ToNotAuthenticated(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusForbidden)
+	}))
+	defer srv.Close()
+
+	c := NewWithSession("ignored", "default", newTestSession(), Options{HTTPClient: srv.Client(), BaseURL: srv.URL})
+
+	err := c.PostJSON(context.Background(), "/x", nil, map[string]any{}, nil)
+	if !errors.Is(err, auth.ErrNotAuthenticated) {
+		t.Fatalf("expected ErrNotAuthenticated, got: %v", err)
 	}
 }
