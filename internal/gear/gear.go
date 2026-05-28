@@ -263,6 +263,62 @@ func ForActivity(ctx context.Context, c *client.Client, activityID int64) ([]Gea
 	return out, nil
 }
 
+// Resolve finds a gear item by uuid (exact) or by name (exact, then substring,
+// case-insensitive). It returns an error if the query matches no gear or is
+// ambiguous, listing the candidates so the caller can disambiguate by uuid.
+func Resolve(ctx context.Context, c *client.Client, userProfilePk int64, query string) (Gear, error) {
+	query = strings.TrimSpace(query)
+	if query == "" {
+		return Gear{}, fmt.Errorf("gear name or uuid is required")
+	}
+	gears, err := List(ctx, c, userProfilePk)
+	if err != nil {
+		return Gear{}, err
+	}
+
+	for _, g := range gears {
+		if strings.EqualFold(g.UUID, query) {
+			return g, nil
+		}
+	}
+
+	var exact []Gear
+	for _, g := range gears {
+		if strings.EqualFold(strings.TrimSpace(g.Name), query) {
+			exact = append(exact, g)
+		}
+	}
+	if len(exact) == 1 {
+		return exact[0], nil
+	}
+	if len(exact) > 1 {
+		return Gear{}, ambiguousMatch(query, exact)
+	}
+
+	ql := strings.ToLower(query)
+	var sub []Gear
+	for _, g := range gears {
+		if strings.Contains(strings.ToLower(g.Name), ql) {
+			sub = append(sub, g)
+		}
+	}
+	if len(sub) == 1 {
+		return sub[0], nil
+	}
+	if len(sub) > 1 {
+		return Gear{}, ambiguousMatch(query, sub)
+	}
+	return Gear{}, fmt.Errorf("no gear matches %q", query)
+}
+
+func ambiguousMatch(query string, matches []Gear) error {
+	names := make([]string, 0, len(matches))
+	for _, g := range matches {
+		names = append(names, fmt.Sprintf("%s (%s)", g.Name, g.UUID))
+	}
+	return fmt.Errorf("%q matches multiple gear: %s", query, strings.Join(names, ", "))
+}
+
 // SetDefault marks a gear item as the default for an activity type, or clears
 // it. activityTypeID is the activity type's numeric id (see activity types).
 func SetDefault(ctx context.Context, c *client.Client, uuid string, activityTypeID int, isDefault bool) error {

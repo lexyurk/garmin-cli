@@ -135,14 +135,20 @@ func newGearUnlinkCmd(opts *globalOptions) *cobra.Command {
 }
 
 func newGearLinkLikeCmd(opts *globalOptions, use, short string, unlink bool) *cobra.Command {
-	return &cobra.Command{
-		Use:   use + " [uuid] [activity-id]",
+	var last bool
+
+	cmd := &cobra.Command{
+		Use:   use + " [gear] [activity-id]",
 		Short: short,
-		Args:  cobra.ExactArgs(2),
+		Long: short + ".\n\n" +
+			"[gear] may be a gear uuid or a name (e.g. \"Pegasus 40\").\n" +
+			"Target the activity by id, or pass --last to use your most recent activity:\n\n" +
+			"  garmin gear " + use + " \"Pegasus 40\" --last",
+		Args: cobra.RangeArgs(1, 2),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			activityID, err := strconv.ParseInt(args[1], 10, 64)
-			if err != nil {
-				return fmt.Errorf("invalid activity id %q", args[1])
+			hasID := len(args) == 2
+			if hasID == last {
+				return fmt.Errorf("provide an activity id or --last (exactly one)")
 			}
 
 			c, err := newAuthedClient(cmd, opts)
@@ -151,10 +157,34 @@ func newGearLinkLikeCmd(opts *globalOptions, use, short string, unlink bool) *co
 			}
 
 			ctx := cmd.Context()
-			if unlink {
-				err = gear.Unlink(ctx, c, args[0], activityID)
+			pk, err := profile.UserProfilePK(ctx, c)
+			if err != nil {
+				return handleAuthedErrorTo(cmd.ErrOrStderr(), opts, err)
+			}
+
+			g, err := gear.Resolve(ctx, c, pk, args[0])
+			if err != nil {
+				return handleAuthedErrorTo(cmd.ErrOrStderr(), opts, err)
+			}
+
+			var activityID int64
+			if last {
+				latest, err := garminactivities.Latest(ctx, c)
+				if err != nil {
+					return handleAuthedErrorTo(cmd.ErrOrStderr(), opts, err)
+				}
+				activityID = latest.ID
 			} else {
-				err = gear.Link(ctx, c, args[0], activityID)
+				activityID, err = strconv.ParseInt(args[1], 10, 64)
+				if err != nil {
+					return fmt.Errorf("invalid activity id %q", args[1])
+				}
+			}
+
+			if unlink {
+				err = gear.Unlink(ctx, c, g.UUID, activityID)
+			} else {
+				err = gear.Link(ctx, c, g.UUID, activityID)
 			}
 			if err != nil {
 				return handleAuthedErrorTo(cmd.ErrOrStderr(), opts, err)
@@ -165,12 +195,16 @@ func newGearLinkLikeCmd(opts *globalOptions, use, short string, unlink bool) *co
 				action = "unlinked"
 			}
 			return renderKVTo(cmd.OutOrStdout(), opts.Format, "Gear "+action, map[string]string{
-				"gear":        args[0],
-				"activity_id": args[1],
+				"gear":        orDash(g.Name),
+				"uuid":        g.UUID,
+				"activity_id": strconv.FormatInt(activityID, 10),
 				"status":      action,
 			})
 		},
 	}
+
+	cmd.Flags().BoolVar(&last, "last", false, "Target your most recent activity instead of an activity id")
+	return cmd
 }
 
 func newGearForActivityCmd(opts *globalOptions) *cobra.Command {

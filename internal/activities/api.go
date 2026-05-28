@@ -132,6 +132,18 @@ func ListByGear(ctx context.Context, c *client.Client, gearUUID string, limit in
 	return out, nil
 }
 
+// Latest returns the most recent activity.
+func Latest(ctx context.Context, c *client.Client) (Summary, error) {
+	list, err := List(ctx, c, 1, "", "", "")
+	if err != nil {
+		return Summary{}, err
+	}
+	if len(list) == 0 {
+		return Summary{}, fmt.Errorf("no activities found")
+	}
+	return list[0], nil
+}
+
 func GetRaw(ctx context.Context, c *client.Client, activityID int64) (map[string]any, error) {
 	var raw map[string]any
 	if err := c.GetJSON(ctx, fmt.Sprintf("/activity-service/activity/%d", activityID), nil, &raw); err != nil {
