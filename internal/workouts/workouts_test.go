@@ -80,3 +80,58 @@ func TestSummarizeAndCountSteps(t *testing.T) {
 		t.Fatalf("CountSteps: %d", got)
 	}
 }
+
+func TestDelete_SendsDelete(t *testing.T) {
+	var method, path string
+	c := testClient(t, func(w http.ResponseWriter, r *http.Request) {
+		method, path = r.Method, r.URL.Path
+		w.WriteHeader(http.StatusNoContent)
+	})
+	if err := Delete(context.Background(), c, 111); err != nil {
+		t.Fatalf("Delete: %v", err)
+	}
+	if method != http.MethodDelete || path != "/workout-service/workout/111" {
+		t.Fatalf("unexpected request: %s %s", method, path)
+	}
+}
+
+func TestUpdate_FetchesAndPutsName(t *testing.T) {
+	var putBody map[string]any
+	c := testClient(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch r.Method {
+		case http.MethodGet:
+			_, _ = w.Write([]byte(`{"workoutName":"old","description":"d","sportType":{"sportTypeKey":"running"}}`))
+		case http.MethodPut:
+			_ = json.NewDecoder(r.Body).Decode(&putBody)
+			w.WriteHeader(http.StatusNoContent)
+		default:
+			t.Fatalf("unexpected method %s", r.Method)
+		}
+	})
+
+	name := "new name"
+	s, err := Update(context.Background(), c, 111, UpdateOptions{Name: &name})
+	if err != nil {
+		t.Fatalf("Update: %v", err)
+	}
+	if putBody["workoutName"] != "new name" {
+		t.Fatalf("workoutName not set in PUT body: %#v", putBody)
+	}
+	// description preserved from the fetched object
+	if putBody["description"] != "d" {
+		t.Fatalf("description not preserved: %#v", putBody)
+	}
+	if s.Name != "new name" {
+		t.Fatalf("summary name: %q", s.Name)
+	}
+}
+
+func TestUpdate_NothingToUpdate(t *testing.T) {
+	c := testClient(t, func(w http.ResponseWriter, r *http.Request) {
+		t.Fatalf("should not call API")
+	})
+	if _, err := Update(context.Background(), c, 111, UpdateOptions{}); err == nil {
+		t.Fatalf("expected error")
+	}
+}

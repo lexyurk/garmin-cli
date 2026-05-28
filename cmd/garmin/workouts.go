@@ -18,8 +18,103 @@ func NewWorkoutsCmd(opts *globalOptions) *cobra.Command {
 	cmd.AddCommand(
 		newWorkoutsListCmd(opts),
 		newWorkoutsGetCmd(opts),
+		newWorkoutsUpdateCmd(opts),
+		newWorkoutsDeleteCmd(opts),
 	)
 
+	return cmd
+}
+
+func newWorkoutsUpdateCmd(opts *globalOptions) *cobra.Command {
+	var name string
+	var description string
+
+	cmd := &cobra.Command{
+		Use:   "update [workout-id]",
+		Short: "Update a workout's name or description",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			id, err := strconv.ParseInt(args[0], 10, 64)
+			if err != nil {
+				return fmt.Errorf("invalid workout id %q", args[0])
+			}
+
+			nameSet := cmd.Flags().Changed("name")
+			descSet := cmd.Flags().Changed("description")
+			if !nameSet && !descSet {
+				return fmt.Errorf("specify at least one of --name, --description")
+			}
+
+			c, err := newAuthedClient(cmd, opts)
+			if err != nil {
+				return err
+			}
+
+			up := workouts.UpdateOptions{}
+			if nameSet {
+				up.Name = &name
+			}
+			if descSet {
+				up.Description = &description
+			}
+
+			ctx := cmd.Context()
+			s, err := workouts.Update(ctx, c, id, up)
+			if err != nil {
+				return handleAuthedErrorTo(cmd.ErrOrStderr(), opts, err)
+			}
+
+			if opts.Format == "json" {
+				return output.JSONTo(cmd.OutOrStdout(), s)
+			}
+			return renderKVTo(cmd.OutOrStdout(), opts.Format, "Workout updated", map[string]string{
+				"id":          strconv.FormatInt(s.WorkoutID, 10),
+				"name":        orDash(s.Name),
+				"description": orDash(s.Description),
+			})
+		},
+	}
+
+	cmd.Flags().StringVar(&name, "name", "", "New workout name")
+	cmd.Flags().StringVar(&description, "description", "", "New description")
+	return cmd
+}
+
+func newWorkoutsDeleteCmd(opts *globalOptions) *cobra.Command {
+	var force bool
+
+	cmd := &cobra.Command{
+		Use:   "delete [workout-id]",
+		Short: "Delete a workout (irreversible)",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			id, err := strconv.ParseInt(args[0], 10, 64)
+			if err != nil {
+				return fmt.Errorf("invalid workout id %q", args[0])
+			}
+
+			if !confirmDestructive(cmd, fmt.Sprintf("Delete workout %s? This cannot be undone.", args[0]), force) {
+				return fmt.Errorf("aborted: pass --force to delete non-interactively")
+			}
+
+			c, err := newAuthedClient(cmd, opts)
+			if err != nil {
+				return err
+			}
+
+			ctx := cmd.Context()
+			if err := workouts.Delete(ctx, c, id); err != nil {
+				return handleAuthedErrorTo(cmd.ErrOrStderr(), opts, err)
+			}
+
+			return renderKVTo(cmd.OutOrStdout(), opts.Format, "Workout deleted", map[string]string{
+				"id":     args[0],
+				"status": "deleted",
+			})
+		},
+	}
+
+	cmd.Flags().BoolVar(&force, "force", false, "Skip confirmation prompt")
 	return cmd
 }
 

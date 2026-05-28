@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
 	"io"
 	"os"
@@ -118,20 +117,8 @@ func newActivitiesDeleteCmd(opts *globalOptions) *cobra.Command {
 				return fmt.Errorf("invalid activity id %q", args[0])
 			}
 
-			if !force {
-				inf, ok := cmd.InOrStdin().(*os.File)
-				if ok && term.IsTerminal(int(inf.Fd())) {
-					_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Delete activity %s? This cannot be undone. [y/N]: ", args[0])
-					line, _ := bufio.NewReader(cmd.InOrStdin()).ReadString('\n')
-					switch strings.ToLower(strings.TrimSpace(line)) {
-					case "y", "yes":
-						// confirmed
-					default:
-						return fmt.Errorf("aborted")
-					}
-				} else {
-					return fmt.Errorf("refusing to delete without --force")
-				}
+			if !confirmDestructive(cmd, fmt.Sprintf("Delete activity %s? This cannot be undone.", args[0]), force) {
+				return fmt.Errorf("aborted: pass --force to delete non-interactively")
 			}
 
 			c, err := newAuthedClient(cmd, opts)

@@ -76,6 +76,43 @@ func GetRaw(ctx context.Context, c *client.Client, workoutID int64) (map[string]
 	return raw, nil
 }
 
+// Delete permanently removes a workout.
+func Delete(ctx context.Context, c *client.Client, workoutID int64) error {
+	return c.Delete(ctx, fmt.Sprintf("/workout-service/workout/%d", workoutID), nil)
+}
+
+// UpdateOptions describes editable workout metadata. Nil fields are left unchanged.
+type UpdateOptions struct {
+	Name        *string
+	Description *string
+}
+
+// Update edits a workout's name and/or description by re-PUTting the full object.
+func Update(ctx context.Context, c *client.Client, workoutID int64, opts UpdateOptions) (Summary, error) {
+	if opts.Name == nil && opts.Description == nil {
+		return Summary{}, fmt.Errorf("nothing to update")
+	}
+	raw, err := GetRaw(ctx, c, workoutID)
+	if err != nil {
+		return Summary{}, err
+	}
+	if opts.Name != nil {
+		raw["workoutName"] = *opts.Name
+	}
+	if opts.Description != nil {
+		raw["description"] = *opts.Description
+	}
+
+	var out map[string]any
+	if err := c.PutJSON(ctx, fmt.Sprintf("/workout-service/workout/%d", workoutID), nil, raw, &out); err != nil {
+		return Summary{}, err
+	}
+	if len(out) == 0 {
+		out = raw
+	}
+	return SummarizeRaw(workoutID, out), nil
+}
+
 // SummarizeRaw extracts headline fields from a full workout object.
 func SummarizeRaw(workoutID int64, raw map[string]any) Summary {
 	s := Summary{WorkoutID: workoutID}
