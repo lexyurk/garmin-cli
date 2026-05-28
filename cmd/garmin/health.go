@@ -25,9 +25,163 @@ func NewHealthCmd(opts *globalOptions) *cobra.Command {
 		newHealthStepsCmd(opts),
 		newHealthStressCmd(opts),
 		newHealthBodyBatteryCmd(opts),
+		newHealthSpo2Cmd(opts),
+		newHealthRespirationCmd(opts),
+		newHealthIntensityMinutesCmd(opts),
 	)
 
 	return cmd
+}
+
+func newHealthSpo2Cmd(opts *globalOptions) *cobra.Command {
+	var date, from, to string
+	var days int
+
+	cmd := &cobra.Command{
+		Use:   "spo2",
+		Short: "Pulse ox (SpO2)",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			dates, err := timeutil.ResolveDates(timeutil.RangeOptions{Date: date, From: from, To: to, Days: days}, time.Now())
+			if err != nil {
+				return err
+			}
+			c, err := newAuthedClient(cmd, opts)
+			if err != nil {
+				return err
+			}
+
+			ctx := cmd.Context()
+			results, err := mapDatesConcurrently(ctx, dates, 4, func(ctx context.Context, date string) (garminhealth.SpO2Summary, error) {
+				return garminhealth.GetSpO2(ctx, c, date)
+			})
+			if err != nil {
+				return handleAuthedErrorTo(cmd.ErrOrStderr(), opts, err)
+			}
+
+			if opts.Format == "json" {
+				return output.JSONTo(cmd.OutOrStdout(), results)
+			}
+			if len(results) == 1 {
+				r := results[0]
+				return renderKVTo(cmd.OutOrStdout(), opts.Format, "SpO2", map[string]string{
+					"date":    r.Date,
+					"average": formatMaybeFloat(r.Average, 0),
+					"lowest":  formatMaybeFloat(r.Lowest, 0),
+					"latest":  formatMaybeFloat(r.Latest, 0),
+				})
+			}
+			rows := make([][]string, 0, len(results))
+			for _, r := range results {
+				rows = append(rows, []string{r.Date, formatMaybeFloat(r.Average, 0), formatMaybeFloat(r.Lowest, 0)})
+			}
+			return renderTableTo(cmd.OutOrStdout(), opts.Format, []string{"date", "average", "lowest"}, rows)
+		},
+	}
+	addDateRangeFlags(cmd, &date, &from, &to, &days)
+	return cmd
+}
+
+func newHealthRespirationCmd(opts *globalOptions) *cobra.Command {
+	var date, from, to string
+	var days int
+
+	cmd := &cobra.Command{
+		Use:   "respiration",
+		Short: "Respiration rate (breaths/min)",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			dates, err := timeutil.ResolveDates(timeutil.RangeOptions{Date: date, From: from, To: to, Days: days}, time.Now())
+			if err != nil {
+				return err
+			}
+			c, err := newAuthedClient(cmd, opts)
+			if err != nil {
+				return err
+			}
+
+			ctx := cmd.Context()
+			results, err := mapDatesConcurrently(ctx, dates, 4, func(ctx context.Context, date string) (garminhealth.RespirationSummary, error) {
+				return garminhealth.GetRespiration(ctx, c, date)
+			})
+			if err != nil {
+				return handleAuthedErrorTo(cmd.ErrOrStderr(), opts, err)
+			}
+
+			if opts.Format == "json" {
+				return output.JSONTo(cmd.OutOrStdout(), results)
+			}
+			if len(results) == 1 {
+				r := results[0]
+				return renderKVTo(cmd.OutOrStdout(), opts.Format, "Respiration", map[string]string{
+					"date":       r.Date,
+					"avg_waking": formatMaybeFloat(r.AvgWaking, 0),
+					"highest":    formatMaybeFloat(r.Highest, 0),
+					"lowest":     formatMaybeFloat(r.Lowest, 0),
+				})
+			}
+			rows := make([][]string, 0, len(results))
+			for _, r := range results {
+				rows = append(rows, []string{r.Date, formatMaybeFloat(r.AvgWaking, 0), formatMaybeFloat(r.Highest, 0), formatMaybeFloat(r.Lowest, 0)})
+			}
+			return renderTableTo(cmd.OutOrStdout(), opts.Format, []string{"date", "avg_waking", "highest", "lowest"}, rows)
+		},
+	}
+	addDateRangeFlags(cmd, &date, &from, &to, &days)
+	return cmd
+}
+
+func newHealthIntensityMinutesCmd(opts *globalOptions) *cobra.Command {
+	var date, from, to string
+	var days int
+
+	cmd := &cobra.Command{
+		Use:   "intensity-minutes",
+		Short: "Intensity minutes (moderate/vigorous)",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			dates, err := timeutil.ResolveDates(timeutil.RangeOptions{Date: date, From: from, To: to, Days: days}, time.Now())
+			if err != nil {
+				return err
+			}
+			c, err := newAuthedClient(cmd, opts)
+			if err != nil {
+				return err
+			}
+
+			ctx := cmd.Context()
+			results, err := mapDatesConcurrently(ctx, dates, 4, func(ctx context.Context, date string) (garminhealth.IntensityMinutesSummary, error) {
+				return garminhealth.GetIntensityMinutes(ctx, c, date)
+			})
+			if err != nil {
+				return handleAuthedErrorTo(cmd.ErrOrStderr(), opts, err)
+			}
+
+			if opts.Format == "json" {
+				return output.JSONTo(cmd.OutOrStdout(), results)
+			}
+			if len(results) == 1 {
+				r := results[0]
+				return renderKVTo(cmd.OutOrStdout(), opts.Format, "Intensity minutes", map[string]string{
+					"date":        r.Date,
+					"moderate":    formatMaybeFloat(r.Moderate, 0),
+					"vigorous":    formatMaybeFloat(r.Vigorous, 0),
+					"weekly_goal": formatMaybeFloat(r.WeeklyGoal, 0),
+				})
+			}
+			rows := make([][]string, 0, len(results))
+			for _, r := range results {
+				rows = append(rows, []string{r.Date, formatMaybeFloat(r.Moderate, 0), formatMaybeFloat(r.Vigorous, 0)})
+			}
+			return renderTableTo(cmd.OutOrStdout(), opts.Format, []string{"date", "moderate", "vigorous"}, rows)
+		},
+	}
+	addDateRangeFlags(cmd, &date, &from, &to, &days)
+	return cmd
+}
+
+func addDateRangeFlags(cmd *cobra.Command, date, from, to *string, days *int) {
+	cmd.Flags().StringVar(date, "date", "", "Date (YYYY-MM-DD, default: today)")
+	cmd.Flags().StringVar(from, "from", "", "Start date (YYYY-MM-DD, inclusive)")
+	cmd.Flags().StringVar(to, "to", "", "End date (YYYY-MM-DD, inclusive)")
+	cmd.Flags().IntVar(days, "days", 0, "Shortcut: last N days (ending today)")
 }
 
 func newHealthSummaryCmd(opts *globalOptions) *cobra.Command {
