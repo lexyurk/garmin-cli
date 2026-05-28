@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/lexyurk/garmin-cli/internal/output"
 	"github.com/lexyurk/garmin-cli/internal/workouts"
@@ -20,8 +21,55 @@ func NewWorkoutsCmd(opts *globalOptions) *cobra.Command {
 		newWorkoutsGetCmd(opts),
 		newWorkoutsUpdateCmd(opts),
 		newWorkoutsDeleteCmd(opts),
+		newWorkoutsScheduleCmd(opts),
 	)
 
+	return cmd
+}
+
+func newWorkoutsScheduleCmd(opts *globalOptions) *cobra.Command {
+	var date string
+
+	cmd := &cobra.Command{
+		Use:   "schedule [workout-id]",
+		Short: "Schedule a workout onto a date in your training calendar",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			id, err := strconv.ParseInt(args[0], 10, 64)
+			if err != nil {
+				return fmt.Errorf("invalid workout id %q", args[0])
+			}
+			if strings.TrimSpace(date) == "" {
+				return fmt.Errorf("--date is required (YYYY-MM-DD)")
+			}
+
+			c, err := newAuthedClient(cmd, opts)
+			if err != nil {
+				return err
+			}
+
+			ctx := cmd.Context()
+			res, err := workouts.Schedule(ctx, c, id, strings.TrimSpace(date))
+			if err != nil {
+				return handleAuthedErrorTo(cmd.ErrOrStderr(), opts, err)
+			}
+
+			if opts.Format == "json" {
+				return output.JSONTo(cmd.OutOrStdout(), res)
+			}
+			fields := map[string]string{
+				"workout_id": strconv.FormatInt(res.WorkoutID, 10),
+				"date":       res.Date,
+				"status":     "scheduled",
+			}
+			if res.WorkoutScheduleID != 0 {
+				fields["schedule_id"] = strconv.FormatInt(res.WorkoutScheduleID, 10)
+			}
+			return renderKVTo(cmd.OutOrStdout(), opts.Format, "Workout scheduled", fields)
+		},
+	}
+
+	cmd.Flags().StringVar(&date, "date", "", "Date to schedule (YYYY-MM-DD)")
 	return cmd
 }
 

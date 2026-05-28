@@ -135,3 +135,37 @@ func TestUpdate_NothingToUpdate(t *testing.T) {
 		t.Fatalf("expected error")
 	}
 }
+
+func TestSchedule_PostsDate(t *testing.T) {
+	var path string
+	var body map[string]any
+	c := testClient(t, func(w http.ResponseWriter, r *http.Request) {
+		path = r.URL.Path
+		_ = json.NewDecoder(r.Body).Decode(&body)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"workoutScheduleId":9001}`))
+	})
+
+	res, err := Schedule(context.Background(), c, 111, "2026-06-01")
+	if err != nil {
+		t.Fatalf("Schedule: %v", err)
+	}
+	if path != "/workout-service/schedule/111" {
+		t.Fatalf("path: %s", path)
+	}
+	if body["date"] != "2026-06-01" {
+		t.Fatalf("date not in body: %#v", body)
+	}
+	if res.WorkoutScheduleID != 9001 || res.Date != "2026-06-01" {
+		t.Fatalf("unexpected result: %#v", res)
+	}
+}
+
+func TestSchedule_RejectsBadDate(t *testing.T) {
+	c := testClient(t, func(w http.ResponseWriter, r *http.Request) {
+		t.Fatalf("should not call API")
+	})
+	if _, err := Schedule(context.Background(), c, 111, "06/01/2026"); err == nil {
+		t.Fatalf("expected error for bad date")
+	}
+}

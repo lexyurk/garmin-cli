@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/url"
 	"strconv"
+	"time"
 
 	"github.com/lexyurk/garmin-cli/internal/client"
 )
@@ -74,6 +75,28 @@ func GetRaw(ctx context.Context, c *client.Client, workoutID int64) (map[string]
 		return nil, err
 	}
 	return raw, nil
+}
+
+// ScheduleResult is the outcome of scheduling a workout onto a date.
+type ScheduleResult struct {
+	WorkoutScheduleID int64  `json:"workout_schedule_id,omitempty"`
+	WorkoutID         int64  `json:"workout_id"`
+	Date              string `json:"date"`
+}
+
+// Schedule places a workout on the training calendar for the given date.
+func Schedule(ctx context.Context, c *client.Client, workoutID int64, date string) (ScheduleResult, error) {
+	if _, err := time.Parse("2006-01-02", date); err != nil {
+		return ScheduleResult{}, fmt.Errorf("invalid date %q (expected YYYY-MM-DD)", date)
+	}
+	body := map[string]any{"date": date}
+	var out struct {
+		WorkoutScheduleID int64 `json:"workoutScheduleId"`
+	}
+	if err := c.PostJSON(ctx, fmt.Sprintf("/workout-service/schedule/%d", workoutID), nil, body, &out); err != nil {
+		return ScheduleResult{}, err
+	}
+	return ScheduleResult{WorkoutScheduleID: out.WorkoutScheduleID, WorkoutID: workoutID, Date: date}, nil
 }
 
 // Delete permanently removes a workout.
