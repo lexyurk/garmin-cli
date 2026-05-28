@@ -7,7 +7,8 @@ Fast, ergonomic Garmin Connect CLI written in Go.
 ## Features
 
 - **Fast** — native Go binary, instant startup
-- **All your Garmin data** — activities, sleep, HR, stress, body battery, training metrics
+- **All your Garmin data** — activities, sleep, HR, stress, body battery, training metrics, fitness age
+- **Plan and manage** — build structured workouts, schedule them, manage gear/shoes, edit activities
 - **LLM-friendly by default** — Markdown output that’s easy to paste into chats/prompts
 - **Multiple output formats** — markdown (default), tables, human, JSON
 - **Script-friendly when needed** — JSON output, composable with `jq`, pipes, standard Unix tools
@@ -50,12 +51,39 @@ garmin activities list --limit 10
 garmin activities get <activity-id>
 garmin activities splits <activity-id>
 garmin activities export <activity-id> --type gpx --out activity.gpx
+garmin activities update <activity-id> --name "Tempo run" --type running
+garmin activities delete <activity-id>
 
 # Training metrics
 garmin training status
 garmin training readiness
 garmin training vo2max
 garmin training hrv
+garmin training fitness-age
+
+# Profile
+garmin profile
+
+# Gear (shoes, bikes)
+garmin gear list                 # active gear
+garmin gear list --all --stats   # include retired + cumulative mileage
+garmin gear add --name "Pegasus 40" --make Nike --max-km 800
+garmin gear link <gear-uuid> <activity-id>     # assign shoes to a run
+garmin gear for-activity <activity-id>
+garmin gear retire <gear-uuid>
+
+# Workouts (plan and build)
+garmin workouts list
+garmin workouts create --name "4x800m" \
+  --step "warmup 10min" \
+  --step "4x(interval 800m; recovery 2min)" \
+  --step "cooldown 5min"
+garmin workouts schedule <workout-id> --date 2026-06-01
+garmin workouts delete <workout-id>
+
+# Training calendar
+garmin calendar
+garmin calendar --month 2026-06 --type workout
 
 # Check auth status
 garmin auth status
@@ -117,10 +145,29 @@ printf '%s' "$GARMIN_PASSWORD" | garmin auth login --email "$GARMIN_EMAIL" --pas
 | `activities get <id>`    | Get activity details                   |
 | `activities splits <id>` | Get activity splits/laps               |
 | `activities export <id>` | Download activity GPX/TCX/original     |
+| `activities update <id>` | Rename / set type / set description     |
+| `activities delete <id>` | Delete an activity                     |
 | `training status`        | Training status                        |
 | `training readiness`     | Training readiness score               |
 | `training vo2max`        | VO2 max estimates                      |
 | `training hrv`           | Heart rate variability                 |
+| `training fitness-age`   | Fitness age (health age) estimate      |
+| `profile`                | Show your Garmin Connect profile       |
+| `gear list`              | List gear (shoes, bikes)               |
+| `gear get <uuid>`        | Gear details with cumulative stats     |
+| `gear stats <uuid>`      | Cumulative distance/activities         |
+| `gear add`               | Add a gear item                        |
+| `gear retire <uuid>`     | Retire / restore a gear item           |
+| `gear link <uuid> <id>`  | Assign gear to an activity             |
+| `gear unlink <uuid> <id>`| Remove gear from an activity           |
+| `gear for-activity <id>` | Show gear linked to an activity        |
+| `workouts list`          | List saved workouts                    |
+| `workouts get <id>`      | Get workout details                    |
+| `workouts create`        | Build and create a structured workout  |
+| `workouts update <id>`   | Update workout name/description        |
+| `workouts delete <id>`   | Delete a workout                       |
+| `workouts schedule <id>` | Schedule a workout onto a date         |
+| `calendar`               | View the training calendar             |
 | `completion <shell>`     | Generate shell completion scripts      |
 | `version`                | Print version                          |
 
