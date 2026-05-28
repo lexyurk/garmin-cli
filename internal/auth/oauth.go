@@ -132,6 +132,17 @@ func oauth1HTTPClient(ctx context.Context, consumer oauthConsumer, token *oauth1
 		ConsumerKey:    consumer.ConsumerKey,
 		ConsumerSecret: consumer.ConsumerSecret,
 	}
+	if token == nil {
+		token = &oauth1.Token{}
+	}
+	// oauth1.Transport uses http.DefaultTransport if its Base is nil. Provide a Base transport
+	// via context so tests (and callers) can stub network without touching globals.
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	if ctx.Value(oauth1.HTTPClient) == nil {
+		ctx = context.WithValue(ctx, oauth1.HTTPClient, &http.Client{Transport: defaultTransport})
+	}
 	c := cfg.Client(ctx, token)
 	c.Timeout = defaultHTTPTimeout
 	return c

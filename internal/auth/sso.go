@@ -27,8 +27,9 @@ func login(ctx context.Context, configDir, email, password string, promptMFA fun
 	}
 
 	httpClient := &http.Client{
-		Timeout: defaultHTTPTimeout,
-		Jar:     jar,
+		Timeout:   defaultHTTPTimeout,
+		Jar:       jar,
+		Transport: defaultTransport,
 	}
 
 	ssoBase := "https://sso.garmin.com/sso"

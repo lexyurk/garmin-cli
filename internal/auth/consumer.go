@@ -36,7 +36,10 @@ func getOAuthConsumer(ctx context.Context, configDir string, httpClient *http.Cl
 	}
 
 	if httpClient == nil {
-		httpClient = &http.Client{Timeout: defaultHTTPTimeout}
+		httpClient = &http.Client{
+			Timeout:   defaultHTTPTimeout,
+			Transport: defaultTransport,
+		}
 	}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, oauthConsumerURL, nil)

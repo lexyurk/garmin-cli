@@ -4,7 +4,7 @@ LDFLAGS := -ldflags "-X main.version=$(VERSION)"
 
 GORELEASER := go run github.com/goreleaser/goreleaser/v2@latest
 
-.PHONY: build install test lint clean snapshot release-check
+.PHONY: build install test coverage coverage-check lint clean snapshot release-check
 
 ## build: Build the binary
 build:
@@ -17,6 +17,15 @@ install:
 ## test: Run all tests
 test:
 	go test ./... -v
+
+## coverage: Run tests with coverage output
+coverage:
+	go test ./... -coverprofile=coverage.out
+	go tool cover -func=coverage.out | awk '/^total:/ {print $$0}'
+
+## coverage-check: Fail if coverage is below COVERAGE_MIN (default: 80)
+coverage-check: coverage
+	bash scripts/check_coverage.sh $${COVERAGE_MIN:-80} coverage.out
 
 ## lint: Run golangci-lint
 lint:
