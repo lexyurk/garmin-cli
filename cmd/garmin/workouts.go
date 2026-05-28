@@ -1,7 +1,9 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
+	"os"
 	"strconv"
 	"strings"
 
@@ -19,12 +21,117 @@ func NewWorkoutsCmd(opts *globalOptions) *cobra.Command {
 	cmd.AddCommand(
 		newWorkoutsListCmd(opts),
 		newWorkoutsGetCmd(opts),
+		newWorkoutsCreateCmd(opts),
 		newWorkoutsUpdateCmd(opts),
 		newWorkoutsDeleteCmd(opts),
 		newWorkoutsScheduleCmd(opts),
 	)
 
 	return cmd
+}
+
+func newWorkoutsCreateCmd(opts *globalOptions) *cobra.Command {
+	var name string
+	var sport string
+	var description string
+	var steps []string
+	var fromJSON string
+	var schedule string
+
+	cmd := &cobra.Command{
+		Use:   "create",
+		Short: "Create a structured workout",
+		Long: `Create a structured workout from step specifications.
+
+Each --step is either an executable step or a repeat block:
+
+  --step "warmup 10min"
+  --step "interval 800m"
+  --step "recovery 90s"
+  --step "interval lap"
+  --step "4x(interval 800m; recovery 2min)"
+
+Durations use min/s/sec (time) or m/km (distance), or the word "lap".
+Step types: warmup, cooldown, interval, recovery, rest, other.
+
+Example:
+  garmin workouts create --name "4x800m" \
+    --step "warmup 10min" \
+    --step "4x(interval 800m; recovery 2min)" \
+    --step "cooldown 5min"
+
+Advanced users can pass a full workout JSON body with --from-json instead.`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			payload, err := buildWorkoutPayload(name, description, sport, steps, fromJSON)
+			if err != nil {
+				return err
+			}
+
+			c, err := newAuthedClient(cmd, opts)
+			if err != nil {
+				return err
+			}
+
+			ctx := cmd.Context()
+			s, err := workouts.Create(ctx, c, payload)
+			if err != nil {
+				return handleAuthedErrorTo(cmd.ErrOrStderr(), opts, err)
+			}
+
+			scheduled := ""
+			if strings.TrimSpace(schedule) != "" {
+				if _, err := workouts.Schedule(ctx, c, s.WorkoutID, strings.TrimSpace(schedule)); err != nil {
+					return handleAuthedErrorTo(cmd.ErrOrStderr(), opts, err)
+				}
+				scheduled = strings.TrimSpace(schedule)
+			}
+
+			if opts.Format == "json" {
+				return output.JSONTo(cmd.OutOrStdout(), s)
+			}
+			fields := map[string]string{
+				"id":     strconv.FormatInt(s.WorkoutID, 10),
+				"name":   orDash(s.Name),
+				"sport":  orDash(s.Sport),
+				"status": "created",
+			}
+			if scheduled != "" {
+				fields["scheduled"] = scheduled
+			}
+			return renderKVTo(cmd.OutOrStdout(), opts.Format, "Workout created", fields)
+		},
+	}
+
+	cmd.Flags().StringVar(&name, "name", "", "Workout name (required unless --from-json)")
+	cmd.Flags().StringVar(&sport, "sport", "running", "Sport: running, cycling")
+	cmd.Flags().StringVar(&description, "description", "", "Optional description")
+	cmd.Flags().StringArrayVar(&steps, "step", nil, "Workout step (repeatable); see --help")
+	cmd.Flags().StringVar(&fromJSON, "from-json", "", "Path to a full workout JSON body (overrides --step)")
+	cmd.Flags().StringVar(&schedule, "schedule", "", "Also schedule onto this date (YYYY-MM-DD)")
+	return cmd
+}
+
+func buildWorkoutPayload(name, description, sport string, steps []string, fromJSON string) (map[string]any, error) {
+	if strings.TrimSpace(fromJSON) != "" {
+		data, err := os.ReadFile(fromJSON)
+		if err != nil {
+			return nil, err
+		}
+		var payload map[string]any
+		if err := json.Unmarshal(data, &payload); err != nil {
+			return nil, fmt.Errorf("parsing %s: %w", fromJSON, err)
+		}
+		return payload, nil
+	}
+
+	if len(steps) == 0 {
+		return nil, fmt.Errorf("provide at least one --step (or use --from-json)")
+	}
+	parsed, err := workouts.ParseSteps(steps)
+	if err != nil {
+		return nil, err
+	}
+	return workouts.BuildPayload(name, description, sport, parsed)
 }
 
 func newWorkoutsScheduleCmd(opts *globalOptions) *cobra.Command {
