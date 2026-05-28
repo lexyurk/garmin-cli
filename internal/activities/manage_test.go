@@ -103,3 +103,23 @@ func TestListByGear_Path(t *testing.T) {
 		t.Fatalf("unexpected: %#v", out)
 	}
 }
+
+func TestGetWeather_Parses(t *testing.T) {
+	c := manageTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/activity-service/activity/42/weather" {
+			t.Fatalf("path: %s", r.URL.Path)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"temp":12.0,"apparentTemp":10.0,"relativeHumidity":80,"windSpeed":5.5,"windDirectionCompassPoint":"NW","weatherTypeDTO":{"desc":"Cloudy"}}`))
+	})
+	wx, err := GetWeather(context.Background(), c, 42)
+	if err != nil {
+		t.Fatalf("GetWeather: %v", err)
+	}
+	if wx.Temp == nil || *wx.Temp != 12.0 {
+		t.Fatalf("temp: %#v", wx.Temp)
+	}
+	if wx.Description != "Cloudy" || wx.WindDirection != "NW" {
+		t.Fatalf("unexpected: %#v", wx)
+	}
+}

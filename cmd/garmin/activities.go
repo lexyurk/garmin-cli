@@ -28,8 +28,53 @@ func NewActivitiesCmd(opts *globalOptions) *cobra.Command {
 		newActivitiesExportCmd(opts),
 		newActivitiesUpdateCmd(opts),
 		newActivitiesDeleteCmd(opts),
+		newActivitiesWeatherCmd(opts),
 	)
 
+	return cmd
+}
+
+func newActivitiesWeatherCmd(opts *globalOptions) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "weather [activity-id]",
+		Short: "Show the weather recorded during an activity",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			id, err := strconv.ParseInt(args[0], 10, 64)
+			if err != nil {
+				return fmt.Errorf("invalid activity id %q", args[0])
+			}
+
+			c, err := newAuthedClient(cmd, opts)
+			if err != nil {
+				return err
+			}
+
+			ctx := cmd.Context()
+			if opts.Format == "json" {
+				raw, err := garminactivities.GetWeatherRaw(ctx, c, id)
+				if err != nil {
+					return handleAuthedErrorTo(cmd.ErrOrStderr(), opts, err)
+				}
+				return output.JSONTo(cmd.OutOrStdout(), raw)
+			}
+
+			wx, err := garminactivities.GetWeather(ctx, c, id)
+			if err != nil {
+				return handleAuthedErrorTo(cmd.ErrOrStderr(), opts, err)
+			}
+			return renderKVTo(cmd.OutOrStdout(), opts.Format, "Weather", map[string]string{
+				"activity_id":   args[0],
+				"description":   orDash(wx.Description),
+				"temp":          formatMaybeFloat(wx.Temp, 0),
+				"apparent_temp": formatMaybeFloat(wx.ApparentTemp, 0),
+				"dew_point":     formatMaybeFloat(wx.DewPoint, 0),
+				"humidity":      formatMaybeInt(wx.Humidity),
+				"wind_speed":    formatMaybeFloat(wx.WindSpeed, 0),
+				"wind_dir":      orDash(wx.WindDirection),
+			})
+		},
+	}
 	return cmd
 }
 
