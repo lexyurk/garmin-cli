@@ -85,6 +85,16 @@ garmin workouts delete <workout-id>
 garmin calendar
 garmin calendar --month 2026-06 --type workout
 
+# Weight & body composition
+garmin weight log 74.5
+garmin weight list --days 30
+garmin weight latest
+
+# Records, predictions, devices
+garmin records
+garmin training race-predictions
+garmin devices list
+
 # Check auth status
 garmin auth status
 
@@ -147,27 +157,38 @@ printf '%s' "$GARMIN_PASSWORD" | garmin auth login --email "$GARMIN_EMAIL" --pas
 | `activities export <id>` | Download activity GPX/TCX/original     |
 | `activities update <id>` | Rename / set type / set description     |
 | `activities delete <id>` | Delete an activity                     |
+| `activities weather <id>`| Weather recorded during an activity    |
 | `training status`        | Training status                        |
 | `training readiness`     | Training readiness score               |
 | `training vo2max`        | VO2 max estimates                      |
 | `training hrv`           | Heart rate variability                 |
 | `training fitness-age`   | Fitness age (health age) estimate      |
+| `training race-predictions` | Predicted 5K/10K/half/marathon times |
 | `profile`                | Show your Garmin Connect profile       |
+| `records`                | Personal records (PRs)                 |
 | `gear list`              | List gear (shoes, bikes)               |
 | `gear get <uuid>`        | Gear details with cumulative stats     |
 | `gear stats <uuid>`      | Cumulative distance/activities         |
+| `gear activities <uuid>` | Activities recorded with a gear item   |
 | `gear add`               | Add a gear item                        |
 | `gear retire <uuid>`     | Retire / restore a gear item           |
 | `gear link <uuid> <id>`  | Assign gear to an activity             |
 | `gear unlink <uuid> <id>`| Remove gear from an activity           |
 | `gear for-activity <id>` | Show gear linked to an activity        |
+| `gear set-default <uuid>`| Set/clear default gear per activity type |
 | `workouts list`          | List saved workouts                    |
 | `workouts get <id>`      | Get workout details                    |
 | `workouts create`        | Build and create a structured workout  |
 | `workouts update <id>`   | Update workout name/description        |
 | `workouts delete <id>`   | Delete a workout                       |
 | `workouts schedule <id>` | Schedule a workout onto a date         |
+| `workouts unschedule <schedule-id>` | Remove a scheduled occurrence |
+| `workouts export <id>`   | Download a workout's FIT file          |
 | `calendar`               | View the training calendar             |
+| `weight log <kg>`        | Log a weigh-in                         |
+| `weight list`            | List weigh-ins over a range            |
+| `weight latest`          | Most recent weigh-in                   |
+| `devices list`           | List registered Garmin devices         |
 | `completion <shell>`     | Generate shell completion scripts      |
 | `version`                | Print version                          |
 
