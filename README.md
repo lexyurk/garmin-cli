@@ -54,6 +54,9 @@ export PATH="$(go env GOPATH)/bin:$PATH"
 # Authenticate with Garmin Connect
 garmin auth login
 
+# One-shot snapshot: health + training + latest activity
+garmin today
+
 # Today's health data
 garmin health summary
 garmin health sleep
@@ -61,6 +64,9 @@ garmin health body-battery
 garmin health heart-rate
 garmin health stress
 garmin health steps
+garmin health spo2
+garmin health respiration
+garmin health intensity-minutes
 
 # Recent activities
 garmin activities list --limit 10
@@ -159,6 +165,7 @@ printf '%s' "$GARMIN_PASSWORD" | garmin auth login --email "$GARMIN_EMAIL" --pas
 
 | Command                  | Description                            |
 |--------------------------|----------------------------------------|
+| `today`                  | One-shot snapshot (health + training + activity) |
 | `auth login`             | Login to Garmin Connect                |
 | `auth status`            | Check authentication status            |
 | `auth logout`            | Clear stored tokens                    |
@@ -168,6 +175,9 @@ printf '%s' "$GARMIN_PASSWORD" | garmin auth login --email "$GARMIN_EMAIL" --pas
 | `health steps`           | Step count                             |
 | `health stress`          | Stress levels                          |
 | `health body-battery`    | Body battery                           |
+| `health spo2`            | Pulse ox (SpO2)                        |
+| `health respiration`     | Respiration rate                       |
+| `health intensity-minutes` | Moderate/vigorous intensity minutes  |
 | `activities list`        | List activities                        |
 | `activities get <id>`    | Get activity details                   |
 | `activities splits <id>` | Get activity splits/laps               |
@@ -184,13 +194,13 @@ printf '%s' "$GARMIN_PASSWORD" | garmin auth login --email "$GARMIN_EMAIL" --pas
 | `profile`                | Show your Garmin Connect profile       |
 | `records`                | Personal records (PRs)                 |
 | `gear list`              | List gear (shoes, bikes)               |
-| `gear get <uuid>`        | Gear details with cumulative stats     |
-| `gear stats <uuid>`      | Cumulative distance/activities         |
-| `gear activities <uuid>` | Activities recorded with a gear item   |
+| `gear get <gear>`        | Gear details with cumulative stats     |
+| `gear stats <gear>`      | Cumulative distance/activities         |
+| `gear activities <gear>` | Activities recorded with a gear item   |
 | `gear add`               | Add a gear item                        |
-| `gear retire <uuid>`     | Retire / restore a gear item           |
-| `gear link <uuid> <id>`  | Assign gear to an activity             |
-| `gear unlink <uuid> <id>`| Remove gear from an activity           |
+| `gear retire <gear>`     | Retire / restore a gear item           |
+| `gear link <gear> <id>`  | Assign gear to an activity (or `--last`) |
+| `gear unlink <gear> <id>`| Remove gear from an activity           |
 | `gear for-activity <id>` | Show gear linked to an activity        |
 | `gear set-default <uuid>`| Set/clear default gear per activity type |
 | `workouts list`          | List saved workouts                    |
