@@ -33,15 +33,23 @@ func TestResolveConfigDir_EnvUsed(t *testing.T) {
 }
 
 func TestResolveConfigDir_DefaultUsesUserConfigDir(t *testing.T) {
-	xdg := t.TempDir()
-	t.Setenv("XDG_CONFIG_HOME", xdg)
+	// Keep the lookup hermetic on Linux (XDG_CONFIG_HOME is honored there).
+	// On macOS os.UserConfigDir() ignores XDG and returns
+	// ~/Library/Application Support, so derive the expected base from the same
+	// source ResolveConfigDir uses instead of assuming XDG semantics.
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	t.Setenv("GARMIN_CONFIG_DIR", "")
+
+	base, err := os.UserConfigDir()
+	if err != nil {
+		t.Skipf("os.UserConfigDir() unavailable: %v", err)
+	}
 
 	got, err := ResolveConfigDir("")
 	if err != nil {
 		t.Fatalf("unexpected err: %v", err)
 	}
-	want := filepath.Join(xdg, AppName)
+	want := filepath.Join(base, AppName)
 	if got != want {
 		t.Fatalf("expected %q, got %q", want, got)
 	}
