@@ -481,6 +481,7 @@ func newHealthStressCmd(opts *globalOptions) *cobra.Command {
 	var from string
 	var to string
 	var days int
+	var values bool
 
 	cmd := &cobra.Command{
 		Use:   "stress",
@@ -496,6 +497,17 @@ func newHealthStressCmd(opts *globalOptions) *cobra.Command {
 			}
 
 			ctx := cmd.Context()
+
+			if values {
+				details, err := mapDatesConcurrently(ctx, dates, 4, func(ctx context.Context, date string) (garminhealth.StressDetail, error) {
+					return garminhealth.GetStressDetail(ctx, c, date)
+				})
+				if err != nil {
+					return handleAuthedErrorTo(cmd.ErrOrStderr(), opts, err)
+				}
+				// Intraday timelines are data, not prose: always emit JSON.
+				return output.JSONTo(cmd.OutOrStdout(), details)
+			}
 			summaries, err := mapDatesConcurrently(ctx, dates, 4, func(ctx context.Context, date string) (garminhealth.DailySummary, error) {
 				return garminhealth.GetDailySummary(ctx, c, date)
 			})
@@ -536,6 +548,7 @@ func newHealthStressCmd(opts *globalOptions) *cobra.Command {
 	cmd.Flags().StringVar(&from, "from", "", "Start date (YYYY-MM-DD, inclusive)")
 	cmd.Flags().StringVar(&to, "to", "", "End date (YYYY-MM-DD, inclusive)")
 	cmd.Flags().IntVar(&days, "days", 0, "Shortcut: last N days (ending today)")
+	cmd.Flags().BoolVar(&values, "values", false, "Include intraday timeline (~3-min samples, JSON output; -1 unmeasured, -2 activity)")
 	return cmd
 }
 

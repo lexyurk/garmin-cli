@@ -81,3 +81,27 @@ func TestOrDateFallback(t *testing.T) {
 		t.Fatalf("expected calendar date, got %q", got)
 	}
 }
+
+func TestGetStressDetail(t *testing.T) {
+	c := wellnessTestClient(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/wellness-service/wellness/dailyStress/2026-07-01" {
+			t.Fatalf("unexpected path: %s", r.URL.Path)
+		}
+		_, _ = w.Write([]byte(`{
+			"calendarDate": "2026-07-01",
+			"avgStressLevel": 31,
+			"maxStressLevel": 96,
+			"stressValuesArray": [[1782900000000, 25], [1782900180000, -2], [1782900360000, 40]]
+		}`))
+	})
+	got, err := GetStressDetail(context.Background(), c, "2026-07-01")
+	if err != nil {
+		t.Fatalf("GetStressDetail: %v", err)
+	}
+	if got.Date != "2026-07-01" || got.Average == nil || *got.Average != 31 || got.Max == nil || *got.Max != 96 {
+		t.Fatalf("unexpected summary: %+v", got)
+	}
+	if len(got.Values) != 3 || got.Values[0].Level != 25 || got.Values[1].Level != -2 || got.Values[2].TimestampMs != 1782900360000 {
+		t.Fatalf("unexpected values: %+v", got.Values)
+	}
+}

@@ -2,6 +2,7 @@ package health
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	"github.com/lexyurk/garmin-cli/internal/client"
@@ -92,6 +93,54 @@ func GetIntensityMinutes(ctx context.Context, c *client.Client, date string) (In
 		Vigorous:   raw.VigorousValue,
 		WeeklyGoal: raw.WeeklyGoal,
 	}, nil
+}
+
+// --- Intraday stress ---
+
+type StressPoint struct {
+	TimestampMs int64 `json:"ts"`
+	Level       int   `json:"level"`
+}
+
+type StressDetail struct {
+	Date    string        `json:"date"`
+	Average *int          `json:"average,omitempty"`
+	Max     *int          `json:"max,omitempty"`
+	Values  []StressPoint `json:"values"`
+}
+
+type stressDetailRaw struct {
+	CalendarDate      string          `json:"calendarDate"`
+	AvgStressLevel    *int            `json:"avgStressLevel"`
+	MaxStressLevel    *int            `json:"maxStressLevel"`
+	StressValuesArray [][]json.Number `json:"stressValuesArray"`
+}
+
+// GetStressDetail returns the intraday stress timeline (~3-minute samples).
+// Negative levels are Garmin markers: -1 unmeasured, -2 activity in progress.
+func GetStressDetail(ctx context.Context, c *client.Client, date string) (StressDetail, error) {
+	var raw stressDetailRaw
+	if err := c.GetJSON(ctx, "/wellness-service/wellness/dailyStress/"+date, nil, &raw); err != nil {
+		return StressDetail{}, err
+	}
+	out := StressDetail{
+		Date:    orDate(raw.CalendarDate, date),
+		Average: raw.AvgStressLevel,
+		Max:     raw.MaxStressLevel,
+		Values:  make([]StressPoint, 0, len(raw.StressValuesArray)),
+	}
+	for _, pair := range raw.StressValuesArray {
+		if len(pair) < 2 {
+			continue
+		}
+		ts, err1 := pair[0].Int64()
+		lvl, err2 := pair[1].Int64()
+		if err1 != nil || err2 != nil {
+			continue
+		}
+		out.Values = append(out.Values, StressPoint{TimestampMs: ts, Level: int(lvl)})
+	}
+	return out, nil
 }
 
 func orDate(calendarDate, fallback string) string {
