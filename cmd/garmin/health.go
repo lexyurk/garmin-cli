@@ -305,15 +305,17 @@ func newHealthSleepCmd(opts *globalOptions) *cobra.Command {
 			if len(results) == 1 {
 				r := results[0]
 				return renderKVTo(cmd.OutOrStdout(), opts.Format, "Sleep", map[string]string{
-					"date":       r.Date,
-					"score":      formatMaybeInt(r.Score),
-					"total":      formatDurationSeconds(r.TotalSleepSeconds),
-					"deep":       formatDurationSeconds(r.DeepSeconds),
-					"light":      formatDurationSeconds(r.LightSeconds),
-					"rem":        formatDurationSeconds(r.RemSeconds),
-					"awake":      formatDurationSeconds(r.AwakeSeconds),
-					"avg_spo2":   formatMaybeFloat(r.AvgSpO2, 0),
-					"avg_breath": formatMaybeFloat(r.AvgRespiration, 1),
+					"date":        r.Date,
+					"score":       formatMaybeInt(r.Score),
+					"total":       formatDurationSeconds(r.TotalSleepSeconds),
+					"deep":        formatDurationSeconds(r.DeepSeconds),
+					"light":       formatDurationSeconds(r.LightSeconds),
+					"rem":         formatDurationSeconds(r.RemSeconds),
+					"awake":       formatDurationSeconds(r.AwakeSeconds),
+					"avg_spo2":    formatMaybeFloat(r.AvgSpO2, 0),
+					"avg_breath":  formatMaybeFloat(r.AvgRespiration, 1),
+					"sleep_start": formatMaybeString(r.SleepStart),
+					"sleep_end":   formatMaybeString(r.SleepEnd),
 				})
 			}
 
@@ -327,12 +329,14 @@ func newHealthSleepCmd(opts *globalOptions) *cobra.Command {
 					formatDurationSeconds(r.LightSeconds),
 					formatDurationSeconds(r.RemSeconds),
 					formatDurationSeconds(r.AwakeSeconds),
+					formatMaybeString(r.SleepStart),
+					formatMaybeString(r.SleepEnd),
 				})
 			}
 			return renderTableTo(
 				cmd.OutOrStdout(),
 				opts.Format,
-				[]string{"date", "score", "total", "deep", "light", "rem", "awake"},
+				[]string{"date", "score", "total", "deep", "light", "rem", "awake", "sleep_start", "sleep_end"},
 				rows,
 			)
 		},
@@ -625,6 +629,13 @@ func formatMaybeInt(v *int) string {
 		return "—"
 	}
 	return fmt.Sprintf("%d", *v)
+}
+
+func formatMaybeString(v *string) string {
+	if v == nil {
+		return "—"
+	}
+	return orDash(*v)
 }
 
 func formatMaybeFloat(v *float64, decimals int) string {

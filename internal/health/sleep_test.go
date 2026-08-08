@@ -16,6 +16,10 @@ func TestSleepDailyResponse_ToSummary(t *testing.T) {
 	    "awakeSleepSeconds": 1200,
 	    "averageSpO2Value": 94.0,
 	    "averageRespirationValue": 13.5,
+	    "sleepStartTimestampGMT": 1771193880000,
+	    "sleepStartTimestampLocal": 1771197480000,
+	    "sleepEndTimestampGMT": 1771221300000,
+	    "sleepEndTimestampLocal": 1771224900000,
 	    "sleepScores": { "overall": { "value": 82 } }
 	  }
 	}`)
@@ -40,5 +44,28 @@ func TestSleepDailyResponse_ToSummary(t *testing.T) {
 	}
 	if s.AvgSpO2 == nil || *s.AvgSpO2 != 94.0 {
 		t.Fatalf("unexpected spO2: %#v", s.AvgSpO2)
+	}
+	if s.SleepStart == nil || *s.SleepStart != "2026-02-15T23:18:00+01:00" {
+		t.Fatalf("unexpected sleep start: %#v", s.SleepStart)
+	}
+	if s.SleepEnd == nil || *s.SleepEnd != "2026-02-16T06:55:00+01:00" {
+		t.Fatalf("unexpected sleep end: %#v", s.SleepEnd)
+	}
+}
+
+func TestGarminLocalTimestamp_UsesTheOffsetEncodedByGarmin(t *testing.T) {
+	gmt := int64(1782860400000)
+	local := int64(1782867600000)
+
+	got := garminLocalTimestamp(&gmt, &local)
+	if got == nil || *got != "2026-07-01T01:00:00+02:00" {
+		t.Fatalf("unexpected summer timestamp: %#v", got)
+	}
+}
+
+func TestGarminLocalTimestamp_RequiresAnAbsoluteTimestamp(t *testing.T) {
+	local := int64(1782867600000)
+	if got := garminLocalTimestamp(nil, &local); got != nil {
+		t.Fatalf("expected nil without GMT timestamp, got %#v", got)
 	}
 }
