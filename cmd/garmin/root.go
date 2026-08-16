@@ -114,6 +114,7 @@ func NewRootCmd(version string) *cobra.Command {
 		NewAuthCmd(opts),
 		NewHealthCmd(opts),
 		NewActivitiesCmd(opts),
+		NewCoursesCmd(opts),
 		NewTrainingCmd(opts),
 		NewProfileCmd(opts),
 		NewGearCmd(opts),
