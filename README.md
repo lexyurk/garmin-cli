@@ -18,6 +18,19 @@ Fast, ergonomic Garmin Connect CLI written in Go.
 
 ## Installation
 
+### Homebrew (recommended)
+
+```bash
+brew install lexyurk/tap/garmin-cli
+```
+
+Upgrade to the latest stable release with:
+
+```bash
+brew update
+brew upgrade garmin-cli
+```
+
 ### Download a release
 
 Grab a prebuilt binary for your OS/arch from the
@@ -33,7 +46,7 @@ garmin version
 ### Go install
 
 ```bash
-# latest release (recommended — reports a real version)
+# latest release (reports a real version)
 go install github.com/lexyurk/garmin-cli/cmd/garmin@latest
 
 # a specific release
@@ -78,6 +91,22 @@ garmin activities splits <activity-id>
 garmin activities export <activity-id> --type gpx --out activity.gpx
 garmin activities update <activity-id> --name "Tempo run" --type running
 garmin activities delete <activity-id>
+
+# Navigation courses
+garmin courses list
+garmin courses get <course-id>
+garmin courses import route.gpx --name "Sunday 26K" --activity-type running \
+  --point 'WATER|11.3km|Dunea tap' \
+  --point 'WATER|21600m|South tap'
+garmin courses export <course-id> --out route.gpx
+garmin courses delete <course-id>
+
+# Turn an activity into a course without an intermediate file
+garmin activities export <activity-id> --type gpx | \
+  garmin courses import - --name "Run again"
+
+# Safe replacement: create + verify the new course, then confirm deleting the old one
+garmin courses import updated.gpx --name "Sunday 26K" --replace <old-course-id>
 
 # Training metrics
 garmin training status
@@ -188,6 +217,11 @@ printf '%s' "$GARMIN_PASSWORD" | garmin auth login --email "$GARMIN_EMAIL" --pas
 | `activities update <id>` | Rename / set type / set description     |
 | `activities delete <id>` | Delete an activity                     |
 | `activities weather <id>`| Weather recorded during an activity    |
+| `courses list`           | List saved navigation courses          |
+| `courses get <id>`       | Get curated course details             |
+| `courses import <gpx\|->` | Import GPX, add course points, optionally replace safely |
+| `courses export <id>`    | Download a course as GPX               |
+| `courses delete <id>`    | Delete a course                        |
 | `training status`        | Training status                        |
 | `training readiness`     | Training readiness score               |
 | `training vo2max`        | VO2 max estimates                      |
