@@ -18,7 +18,28 @@ Fast, ergonomic Garmin Connect CLI written in Go.
 
 ## Installation
 
-### Homebrew (recommended)
+### Linux
+
+Install the latest stable release into the user-writable `~/.local/bin`:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/lexyurk/garmin-cli/main/scripts/install.sh | sh
+```
+
+The installer supports Linux on x86_64/amd64 and arm64/aarch64. It downloads
+the matching release archive and verifies its SHA256 checksum before extraction.
+
+Pin a version or choose another user-writable install directory:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/lexyurk/garmin-cli/main/scripts/install.sh | GARMIN_VERSION=v0.1.0 sh
+curl -fsSL https://raw.githubusercontent.com/lexyurk/garmin-cli/main/scripts/install.sh | INSTALL_DIR="$HOME/bin" sh
+```
+
+Make sure the selected directory is on your `PATH`. The installer prints the
+exact export command if it is not.
+
+### Homebrew (macOS)
 
 ```bash
 brew install lexyurk/tap/garmin-cli
@@ -31,7 +52,7 @@ brew update
 brew upgrade garmin-cli
 ```
 
-### Download a release
+### Download a release manually
 
 Grab a prebuilt binary for your OS/arch from the
 [Releases](https://github.com/lexyurk/garmin-cli/releases) page (linux, macOS,
