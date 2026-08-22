@@ -8,6 +8,7 @@ on:
 
 permissions:
   contents: read
+  id-token: write
 
 jobs:
   test:
@@ -40,7 +41,7 @@ jobs:
       - name: Run tests
         run: make test
 
-      - name: Run coverage check (>= 80%)
+      - name: Run coverage check (>= 90%)
         run: make coverage-check
 
       - name: Upload coverage artifact
@@ -50,11 +51,13 @@ jobs:
           path: coverage.out
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v7
         with:
+          use_oidc: true
           files: coverage.out
+          disable_search: true
           flags: unittests
-          fail_ci_if_error: false
+          fail_ci_if_error: true
 
       - name: Run tests (race)
         run: go test -race ./...

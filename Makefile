@@ -23,9 +23,9 @@ coverage:
 	go test ./... -coverprofile=coverage.out
 	go tool cover -func=coverage.out | awk '/^total:/ {print $$0}'
 
-## coverage-check: Fail if coverage is below COVERAGE_MIN (default: 80)
+## coverage-check: Fail if coverage is below COVERAGE_MIN (default: 90)
 coverage-check: coverage
-	bash scripts/check_coverage.sh $${COVERAGE_MIN:-80} coverage.out
+	bash scripts/check_coverage.sh $${COVERAGE_MIN:-90} coverage.out
 
 ## lint: Run golangci-lint
 lint:
