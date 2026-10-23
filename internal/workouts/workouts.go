@@ -6,14 +6,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
-	"net/http"
 	"net/url"
 	"strconv"
-	"strings"
 	"time"
 
-	"github.com/lexyurk/garmin-cli/internal/auth"
 	"github.com/lexyurk/garmin-cli/internal/client"
 )
 
@@ -140,7 +136,7 @@ func Move(ctx context.Context, c *client.Client, scheduleID int64, date string) 
 	if err != nil {
 		return MoveResult{}, fmt.Errorf("schedule %d: %w", scheduleID, err)
 	}
-	if err := putScheduleJSON(ctx, c, path, body); err != nil {
+	if err := c.PutJSON(ctx, path, nil, body, nil); err != nil {
 		return MoveResult{}, err
 	}
 	return MoveResult{
@@ -214,26 +210,6 @@ func workoutIDNumber(workout map[string]any) (json.Number, int64, error) {
 		return "", 0, fmt.Errorf("workoutId: %w", err)
 	}
 	return num, id, nil
-}
-
-// PutJSON marshals with encoding/json, which escapes &, <, and > inside a json.RawMessage.
-// The schedule document has to keep sibling text as the GET body wrote it.
-func putScheduleJSON(ctx context.Context, c *client.Client, path string, body json.RawMessage) error {
-	resp, err := c.Do(ctx, http.MethodPut, path, nil, bytes.NewReader(body), "application/json")
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden {
-		b, _ := io.ReadAll(io.LimitReader(resp.Body, 16<<10))
-		return fmt.Errorf("%w: %s: %s", auth.ErrNotAuthenticated, resp.Status, strings.TrimSpace(string(b)))
-	}
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		b, _ := io.ReadAll(io.LimitReader(resp.Body, 16<<10))
-		return fmt.Errorf("garmin connectapi error: %s: %s", resp.Status, strings.TrimSpace(string(b)))
-	}
-	_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, 1<<20))
-	return nil
 }
 
 // Delete permanently removes a workout.

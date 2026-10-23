@@ -193,11 +193,19 @@ func (c *Client) SendJSON(ctx context.Context, method, path string, query url.Va
 	var r io.Reader
 	contentType := ""
 	if body != nil {
-		buf, err := json.Marshal(body)
-		if err != nil {
-			return err
+		switch raw := body.(type) {
+		case json.RawMessage:
+			if raw == nil {
+				raw = json.RawMessage("null")
+			}
+			r = bytes.NewReader(raw)
+		default:
+			buf, err := json.Marshal(body)
+			if err != nil {
+				return err
+			}
+			r = bytes.NewReader(buf)
 		}
-		r = bytes.NewReader(buf)
 		contentType = "application/json"
 	}
 

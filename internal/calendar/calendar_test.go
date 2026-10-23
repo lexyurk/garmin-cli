@@ -50,7 +50,6 @@ func TestMonth_UsesZeroBasedMonth(t *testing.T) {
 	if items[0].ScheduleID != 0 {
 		t.Fatalf("missing id copied into schedule_id: %#v", items[0])
 	}
-	// falls back to calendarDate when date is empty
 	if items[1].Date != "2026-06-05" || items[1].ActivityID != 222 || items[1].Title != "Run" || items[1].Type != "activity" {
 		t.Fatalf("item1: %#v", items[1])
 	}
