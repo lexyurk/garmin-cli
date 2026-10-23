@@ -2,7 +2,9 @@
 package workouts
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/url"
 	"strconv"
@@ -84,10 +86,17 @@ type ScheduleResult struct {
 	Date              string `json:"date"`
 }
 
+func parseCalendarDate(date string) error {
+	if _, err := time.Parse("2006-01-02", date); err != nil {
+		return fmt.Errorf("invalid date %q (expected YYYY-MM-DD)", date)
+	}
+	return nil
+}
+
 // Schedule places a workout on the training calendar for the given date.
 func Schedule(ctx context.Context, c *client.Client, workoutID int64, date string) (ScheduleResult, error) {
-	if _, err := time.Parse("2006-01-02", date); err != nil {
-		return ScheduleResult{}, fmt.Errorf("invalid date %q (expected YYYY-MM-DD)", date)
+	if err := parseCalendarDate(date); err != nil {
+		return ScheduleResult{}, err
 	}
 	body := map[string]any{"date": date}
 	var out struct {
@@ -97,6 +106,110 @@ func Schedule(ctx context.Context, c *client.Client, workoutID int64, date strin
 		return ScheduleResult{}, err
 	}
 	return ScheduleResult{WorkoutScheduleID: out.WorkoutScheduleID, WorkoutID: workoutID, Date: date}, nil
+}
+
+// MoveResult is the outcome of moving one scheduled occurrence.
+type MoveResult struct {
+	ScheduleID   int64  `json:"schedule_id"`
+	WorkoutID    int64  `json:"workout_id,omitempty"`
+	PreviousDate string `json:"previous_date,omitempty"`
+	Date         string `json:"date"`
+	Status       string `json:"status"`
+}
+
+type scheduleFacts struct {
+	WorkoutID    int64
+	PreviousDate string
+}
+
+// Move places one existing occurrence on a new date.
+func Move(ctx context.Context, c *client.Client, scheduleID int64, date string) (MoveResult, error) {
+	if err := parseCalendarDate(date); err != nil {
+		return MoveResult{}, err
+	}
+	path := fmt.Sprintf("/workout-service/schedule/%d", scheduleID)
+	var raw json.RawMessage
+	if err := c.GetJSON(ctx, path, nil, &raw); err != nil {
+		return MoveResult{}, err
+	}
+	body, facts, err := retargetSchedule(raw, date)
+	if err != nil {
+		return MoveResult{}, fmt.Errorf("schedule %d: %w", scheduleID, err)
+	}
+	if err := c.PutJSON(ctx, path, nil, body, nil); err != nil {
+		return MoveResult{}, err
+	}
+	return MoveResult{
+		ScheduleID:   scheduleID,
+		WorkoutID:    facts.WorkoutID,
+		PreviousDate: facts.PreviousDate,
+		Date:         date,
+		Status:       "moved",
+	}, nil
+}
+
+func retargetSchedule(body json.RawMessage, date string) (json.RawMessage, scheduleFacts, error) {
+	dec := json.NewDecoder(bytes.NewReader(body))
+	dec.UseNumber()
+	var payload any
+	if err := dec.Decode(&payload); err != nil {
+		return nil, scheduleFacts{}, err
+	}
+	obj, ok := payload.(map[string]any)
+	if !ok {
+		return nil, scheduleFacts{}, fmt.Errorf("expected a JSON object")
+	}
+
+	var facts scheduleFacts
+	if s, ok := obj["calendarDate"].(string); ok {
+		facts.PreviousDate = s
+	} else if s, ok := obj["date"].(string); ok {
+		facts.PreviousDate = s
+	}
+	obj["calendarDate"] = date
+	if _, exists := obj["date"]; exists {
+		obj["date"] = date
+	}
+
+	workout, exists := obj["workout"]
+	if !exists || workout == nil {
+		obj["workout"] = nil
+	} else {
+		workoutObj, ok := workout.(map[string]any)
+		if !ok {
+			return nil, scheduleFacts{}, fmt.Errorf("workout: expected a JSON object")
+		}
+		num, id, err := workoutIDNumber(workoutObj)
+		if err != nil {
+			return nil, scheduleFacts{}, err
+		}
+		obj["workout"] = map[string]any{"workoutId": num}
+		facts.WorkoutID = id
+	}
+
+	var buf bytes.Buffer
+	enc := json.NewEncoder(&buf)
+	enc.SetEscapeHTML(false)
+	if err := enc.Encode(obj); err != nil {
+		return nil, scheduleFacts{}, err
+	}
+	return json.RawMessage(bytes.TrimRight(buf.Bytes(), "\n")), facts, nil
+}
+
+func workoutIDNumber(workout map[string]any) (json.Number, int64, error) {
+	raw, ok := workout["workoutId"]
+	if !ok || raw == nil {
+		return "", 0, fmt.Errorf("workoutId is required")
+	}
+	num, ok := raw.(json.Number)
+	if !ok {
+		return "", 0, fmt.Errorf("workoutId must be an integer")
+	}
+	id, err := num.Int64()
+	if err != nil {
+		return "", 0, fmt.Errorf("workoutId: %w", err)
+	}
+	return num, id, nil
 }
 
 // Delete permanently removes a workout.

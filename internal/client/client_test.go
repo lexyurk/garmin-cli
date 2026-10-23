@@ -3,6 +3,7 @@ package client
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -279,6 +280,25 @@ func TestClient_SendJSON_PostBodyAndDecode(t *testing.T) {
 	}
 	if out.ID != 42 {
 		t.Fatalf("expected decoded id 42, got %d", out.ID)
+	}
+}
+
+func TestClient_PutJSON_RawMessagePreservesAmpersand(t *testing.T) {
+	var gotBody string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		b, _ := io.ReadAll(r.Body)
+		gotBody = strings.TrimSpace(string(b))
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer srv.Close()
+
+	c := NewWithSession("ignored", "default", newTestSession(), Options{HTTPClient: srv.Client(), BaseURL: srv.URL})
+	raw := json.RawMessage(`{"note":"A & B"}`)
+	if err := c.PutJSON(context.Background(), "/x", nil, raw, nil); err != nil {
+		t.Fatalf("PutJSON error: %v", err)
+	}
+	if gotBody != `{"note":"A & B"}` || strings.Contains(gotBody, `\u0026`) {
+		t.Fatalf("body: %q", gotBody)
 	}
 }
 

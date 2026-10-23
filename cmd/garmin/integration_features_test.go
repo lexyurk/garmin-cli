@@ -116,11 +116,21 @@ func newFeatureAPIServer(t *testing.T) *httptest.Server {
 		})
 	})
 	mux.HandleFunc("/workout-service/schedule/", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == http.MethodDelete {
+		switch r.Method {
+		case http.MethodDelete:
 			w.WriteHeader(http.StatusNoContent)
-			return
+		case http.MethodGet:
+			writeJSON(w, map[string]any{
+				"calendarDate": "2026-10-20",
+				"workout":      map[string]any{"workoutId": 111, "workoutName": "Intervals"},
+			})
+		case http.MethodPost:
+			writeJSON(w, map[string]any{"workoutScheduleId": 9001})
+		case http.MethodPut:
+			w.WriteHeader(http.StatusNoContent)
+		default:
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		}
-		writeJSON(w, map[string]any{"workoutScheduleId": 9001})
 	})
 
 	// --- weight ---
@@ -179,8 +189,9 @@ func newFeatureAPIServer(t *testing.T) *httptest.Server {
 	// --- calendar ---
 	mux.HandleFunc("/calendar-service/year/", func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, map[string]any{"calendarItems": []any{
-			map[string]any{"date": "2026-05-03", "itemType": "workout", "title": "Intervals", "workoutId": 111},
-			map[string]any{"date": "2026-05-05", "itemType": "activity", "title": "Run", "activityId": 123},
+			map[string]any{"date": "2026-05-03", "itemType": "workout", "title": "Intervals", "workoutId": 111, "id": 9001},
+			map[string]any{"date": "2026-05-05", "itemType": "activity", "title": "Run", "activityId": 123, "id": 7001},
+			map[string]any{"date": "2026-05-07", "itemType": "workout", "title": "Easy", "workoutId": 111},
 		}})
 	})
 
@@ -222,6 +233,7 @@ func TestCLI_FeatureFlows(t *testing.T) {
 		{"workouts update", []string{"workouts", "update", "111", "--name", "renamed"}, "updated"},
 		{"workouts delete", []string{"workouts", "delete", "111", "--force"}, "deleted"},
 		{"workouts schedule", []string{"workouts", "schedule", "111", "--date", "2026-06-01"}, "scheduled"},
+		{"workouts move", []string{"workouts", "move", "9001", "--date", "2026-10-23"}, "Workout moved"},
 		{"workouts unschedule", []string{"workouts", "unschedule", "9001"}, "unscheduled"},
 		{"weight log", []string{"weight", "log", "74.5"}, "logged"},
 		{"weight list", []string{"weight", "list", "--days", "30"}, "weight_kg"},
@@ -255,4 +267,295 @@ func TestCLI_FeatureFlows(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestCLI_ScheduleIDCommands(t *testing.T) {
+	srv := newFeatureAPIServer(t)
+	defer srv.Close()
+	t.Setenv("GARMIN_CONNECTAPI_BASE_URL", srv.URL)
+	cfgDir := t.TempDir()
+	writeTestSession(t, cfgDir)
+
+	t.Run("calendar json", func(t *testing.T) {
+		stdout, stderr, err := runCLI(t, cfgDir, "--format", "json", "calendar", "--month", "2026-05")
+		if err != nil {
+			t.Fatalf("err: %v\nstderr:\n%s", err, stderr)
+		}
+		for _, want := range []string{
+			`"date"`, `"item_type"`, `"title"`, `"workout_id"`, `"activity_id"`, `"schedule_id"`,
+			`"item_type": "workout"`, `"title": "Intervals"`, `"schedule_id": 9001`, `"schedule_id": 7001`,
+		} {
+			if !strings.Contains(stdout, want) {
+				t.Fatalf("missing %s in:\n%s", want, stdout)
+			}
+		}
+		dec := json.NewDecoder(strings.NewReader(stdout))
+		dec.UseNumber()
+		var items []map[string]any
+		if err := dec.Decode(&items); err != nil {
+			t.Fatalf("json: %v\n%s", err, stdout)
+		}
+		var easy, intervals, run bool
+		for _, it := range items {
+			switch title, _ := it["title"].(string); title {
+			case "Easy":
+				easy = true
+				if _, ok := it["schedule_id"]; ok {
+					t.Fatalf("missing id copied into schedule_id: %#v", it)
+				}
+				if it["workout_id"] != json.Number("111") {
+					t.Fatalf("easy workout_id: %#v", it)
+				}
+			case "Intervals":
+				intervals = true
+				if it["schedule_id"] != json.Number("9001") || it["workout_id"] != json.Number("111") || it["date"] != "2026-05-03" {
+					t.Fatalf("intervals: %#v", it)
+				}
+			case "Run":
+				run = true
+				if it["schedule_id"] != json.Number("7001") || it["activity_id"] != json.Number("123") || it["item_type"] != "activity" {
+					t.Fatalf("run: %#v", it)
+				}
+				if _, ok := it["workout_id"]; ok {
+					t.Fatalf("activity row has workout_id: %#v", it)
+				}
+			}
+		}
+		if !easy || !intervals || !run {
+			t.Fatalf("items: %#v", items)
+		}
+	})
+
+	for _, format := range []string{"markdown", "table"} {
+		t.Run("calendar "+format, func(t *testing.T) {
+			stdout, stderr, err := runCLI(t, cfgDir, "--format", format, "calendar", "--month", "2026-05")
+			if err != nil {
+				t.Fatalf("err: %v\nstderr:\n%s", err, stderr)
+			}
+			for _, want := range []string{"date", "type", "title", "ref", "schedule_id", "9001", "7001", "—"} {
+				if !strings.Contains(stdout, want) {
+					t.Fatalf("missing %s in:\n%s", want, stdout)
+				}
+			}
+		})
+	}
+
+	t.Run("move json", func(t *testing.T) {
+		stdout, stderr, err := runCLI(t, cfgDir, "--format", "json", "workouts", "move", "9001", "--date", "2026-10-23")
+		if err != nil {
+			t.Fatalf("err: %v\nstderr:\n%s", err, stderr)
+		}
+		for _, want := range []string{
+			`"schedule_id": 9001`, `"workout_id": 111`, `"previous_date": "2026-10-20"`,
+			`"date": "2026-10-23"`, `"status": "moved"`,
+		} {
+			if !strings.Contains(stdout, want) {
+				t.Fatalf("missing %s in:\n%s", want, stdout)
+			}
+		}
+	})
+
+	t.Run("move text", func(t *testing.T) {
+		stdout, stderr, err := runCLI(t, cfgDir, "workouts", "move", "9001", "--date", "2026-10-23")
+		if err != nil {
+			t.Fatalf("err: %v\nstderr:\n%s", err, stderr)
+		}
+		if !strings.Contains(stdout, "Workout moved") {
+			t.Fatalf("stdout:\n%s", stdout)
+		}
+	})
+
+	t.Run("unschedule json", func(t *testing.T) {
+		stdout, stderr, err := runCLI(t, cfgDir, "--format", "json", "workouts", "unschedule", "9002")
+		if err != nil {
+			t.Fatalf("err: %v\nstderr:\n%s", err, stderr)
+		}
+		for _, want := range []string{`"schedule_id": 9002`, "unscheduled"} {
+			if !strings.Contains(stdout, want) {
+				t.Fatalf("missing %s in:\n%s", want, stdout)
+			}
+		}
+	})
+
+	t.Run("delete json", func(t *testing.T) {
+		stdout, stderr, err := runCLI(t, cfgDir, "--format", "json", "workouts", "delete", "111", "--force")
+		if err != nil {
+			t.Fatalf("err: %v\nstderr:\n%s", err, stderr)
+		}
+		for _, want := range []string{`"id": 111`, "deleted"} {
+			if !strings.Contains(stdout, want) {
+				t.Fatalf("missing %s in:\n%s", want, stdout)
+			}
+		}
+	})
+
+	t.Run("delete no force", func(t *testing.T) {
+		stdout, stderr, err := runCLI(t, cfgDir, "workouts", "delete", "111")
+		if err == nil || err.Error() != "aborted: pass --force to delete non-interactively" {
+			t.Fatalf("err: %v\nstdout:\n%s\nstderr:\n%s", err, stdout, stderr)
+		}
+		if strings.Contains(stdout, "deleted") || strings.Contains(stderr, "deleted") {
+			t.Fatalf("printed a deleted status\nstdout:\n%s\nstderr:\n%s", stdout, stderr)
+		}
+	})
+
+	t.Run("move no date", func(t *testing.T) {
+		stdout, stderr, err := runCLI(t, cfgDir, "workouts", "move", "9001")
+		if err == nil || !strings.Contains(err.Error(), "--date is required") {
+			t.Fatalf("err: %v\nstdout:\n%s\nstderr:\n%s", err, stdout, stderr)
+		}
+		if strings.Contains(stdout, "moved") || strings.Contains(stderr, "moved") {
+			t.Fatalf("printed moved\nstdout:\n%s\nstderr:\n%s", stdout, stderr)
+		}
+	})
+
+	t.Run("move bad id", func(t *testing.T) {
+		stdout, stderr, err := runCLI(t, cfgDir, "workouts", "move", "abc", "--date", "2026-10-23")
+		if err == nil || err.Error() != `invalid schedule id "abc"` {
+			t.Fatalf("err: %v\nstdout:\n%s\nstderr:\n%s", err, stdout, stderr)
+		}
+		if strings.Contains(stdout, "moved") {
+			t.Fatalf("printed moved:\n%s", stdout)
+		}
+	})
+}
+
+func TestCLI_ScheduleIDHelp(t *testing.T) {
+	cfgDir := t.TempDir()
+	cases := []struct {
+		name string
+		args []string
+		want []string
+	}{
+		{
+			name: "calendar",
+			args: []string{"calendar", "--help"},
+			want: []string{
+				"The same workout_id can appear on more than one date. schedule_id names one occurrence. Copy schedule_id from a workout row.",
+				"garmin calendar --month 2026-10",
+				"garmin calendar --month 2026-10 -f json",
+				"garmin workouts move <schedule-id> --date 2026-10-23",
+				"garmin workouts unschedule <schedule-id>",
+			},
+		},
+		{
+			name: "workouts",
+			args: []string{"workouts", "--help"},
+			want: []string{
+				"Move one scheduled workout occurrence to a new date",
+			},
+		},
+		{
+			name: "move",
+			args: []string{"workouts", "move", "--help"},
+			want: []string{
+				"move [schedule-id]",
+				"Date to move the occurrence to (YYYY-MM-DD)",
+				"Move one scheduled workout occurrence onto a new date. The occurrence keeps its schedule id, so the old date does not keep a copy.",
+				"garmin calendar --month 2026-10",
+				"garmin workouts move <schedule-id> --date 2026-10-23",
+			},
+		},
+		{
+			name: "unschedule",
+			args: []string{"workouts", "unschedule", "--help"},
+			want: []string{
+				"Remove one scheduled workout occurrence. Pass the schedule_id from garmin calendar. The workout definition stays. garmin workouts delete removes the definition and cannot be undone.",
+				"garmin calendar --month 2026-10",
+				"garmin workouts unschedule <schedule-id>",
+			},
+		},
+		{
+			name: "delete",
+			args: []string{"workouts", "delete", "--help"},
+			want: []string{
+				"Delete a workout definition. This cannot be undone. To drop one planned date and keep the definition, use garmin workouts unschedule with the calendar schedule_id.",
+			},
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			stdout, stderr, err := runCLI(t, cfgDir, tc.args...)
+			if err != nil {
+				t.Fatalf("err: %v\nstderr:\n%s\nstdout:\n%s", err, stderr, stdout)
+			}
+			for _, want := range tc.want {
+				if !strings.Contains(stdout, want) {
+					t.Fatalf("missing %q in:\n%s", want, stdout)
+				}
+			}
+		})
+	}
+}
+
+func TestCLI_MoveEdgeOutputs(t *testing.T) {
+	t.Run("sparse document", func(t *testing.T) {
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path != "/workout-service/schedule/9001" {
+				t.Fatalf("path: %s", r.URL.Path)
+			}
+			switch r.Method {
+			case http.MethodGet:
+				w.Header().Set("Content-Type", "application/json")
+				_, _ = w.Write([]byte(`{"ownerId":1}`))
+			case http.MethodPut:
+				w.WriteHeader(http.StatusNoContent)
+			default:
+				t.Fatalf("method %s", r.Method)
+			}
+		}))
+		defer srv.Close()
+		t.Setenv("GARMIN_CONNECTAPI_BASE_URL", srv.URL)
+		cfgDir := t.TempDir()
+		writeTestSession(t, cfgDir)
+
+		stdout, stderr, err := runCLI(t, cfgDir, "workouts", "move", "9001", "--date", "2026-10-23")
+		if err != nil {
+			t.Fatalf("err: %v\nstderr:\n%s", err, stderr)
+		}
+		if !strings.Contains(stdout, "Workout moved") || strings.Contains(stdout, "workout_id") || strings.Contains(stdout, "previous_date") {
+			t.Fatalf("stdout:\n%s", stdout)
+		}
+
+		stdout, stderr, err = runCLI(t, cfgDir, "--format", "json", "workouts", "move", "9001", "--date", "2026-10-23")
+		if err != nil {
+			t.Fatalf("err: %v\nstderr:\n%s", err, stderr)
+		}
+		for _, want := range []string{`"schedule_id": 9001`, `"date": "2026-10-23"`, `"status": "moved"`} {
+			if !strings.Contains(stdout, want) {
+				t.Fatalf("missing %s in:\n%s", want, stdout)
+			}
+		}
+		if strings.Contains(stdout, "workout_id") || strings.Contains(stdout, "previous_date") {
+			t.Fatalf("json included empty fields:\n%s", stdout)
+		}
+	})
+
+	t.Run("get failure", func(t *testing.T) {
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			http.Error(w, "rejected", http.StatusBadRequest)
+		}))
+		defer srv.Close()
+		t.Setenv("GARMIN_CONNECTAPI_BASE_URL", srv.URL)
+		cfgDir := t.TempDir()
+		writeTestSession(t, cfgDir)
+		stdout, stderr, err := runCLI(t, cfgDir, "workouts", "move", "9001", "--date", "2026-10-23")
+		if err == nil || !strings.Contains(err.Error(), "400") {
+			t.Fatalf("err: %v\nstdout:\n%s\nstderr:\n%s", err, stdout, stderr)
+		}
+		if strings.Contains(stdout, "moved") {
+			t.Fatalf("printed moved:\n%s", stdout)
+		}
+	})
+
+	t.Run("missing auth", func(t *testing.T) {
+		t.Setenv("GARMIN_CONNECTAPI_BASE_URL", "http://127.0.0.1:1")
+		stdout, stderr, err := runCLI(t, t.TempDir(), "workouts", "move", "9001", "--date", "2026-10-23")
+		if err == nil {
+			t.Fatal("expected auth error")
+		}
+		if strings.Contains(stdout, "moved") || strings.Contains(stderr, "moved") {
+			t.Fatalf("printed moved\nstdout:\n%s\nstderr:\n%s", stdout, stderr)
+		}
+	})
 }

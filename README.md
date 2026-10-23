@@ -154,7 +154,16 @@ garmin workouts create --name "4x800m" \
   --step "warmup 10min" \
   --step "4x(interval 800m; recovery 2min)" \
   --step "cooldown 5min"
+```
+
+The same `workout_id` can appear on two dates. `schedule_id` names one occurrence.
+
+```bash
 garmin workouts schedule <workout-id> --date 2026-06-01
+garmin calendar --month 2026-10
+garmin calendar --month 2026-10 -f json
+garmin workouts move <schedule-id> --date 2026-10-23
+garmin workouts unschedule <schedule-id>
 garmin workouts delete <workout-id>
 
 # Training calendar
@@ -265,9 +274,10 @@ printf '%s' "$GARMIN_PASSWORD" | garmin auth login --email "$GARMIN_EMAIL" --pas
 | `workouts get <id>`      | Get workout details                    |
 | `workouts create`        | Build and create a structured workout  |
 | `workouts update <id>`   | Update workout name/description        |
-| `workouts delete <id>`   | Delete a workout                       |
+| `workouts delete <id>`   | Delete a workout definition. This cannot be undone. |
 | `workouts schedule <id>` | Schedule a workout onto a date         |
-| `workouts unschedule <schedule-id>` | Remove a scheduled occurrence |
+| `workouts move <schedule-id>` | Move one scheduled occurrence to a new date |
+| `workouts unschedule <schedule-id>` | Remove one occurrence by calendar schedule_id |
 | `workouts export <id>`   | Download a workout's FIT file          |
 | `calendar`               | View the training calendar             |
 | `weight log <kg>`        | Log a weigh-in                         |

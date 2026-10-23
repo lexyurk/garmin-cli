@@ -18,6 +18,12 @@ func NewCalendarCmd(opts *globalOptions) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "calendar",
 		Short: "View the training calendar (scheduled workouts and activities)",
+		Long: `The same workout_id can appear on more than one date. schedule_id names one occurrence. Copy schedule_id from a workout row.
+
+  garmin calendar --month 2026-10
+  garmin calendar --month 2026-10 -f json
+  garmin workouts move <schedule-id> --date 2026-10-23
+  garmin workouts unschedule <schedule-id>`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			year, mon, err := resolveCalendarMonth(month, time.Now())
 			if err != nil {
@@ -48,9 +54,13 @@ func NewCalendarCmd(opts *globalOptions) *cobra.Command {
 				case it.ActivityID != 0:
 					ref = "activity:" + strconv.FormatInt(it.ActivityID, 10)
 				}
-				rows = append(rows, []string{orDash(it.Date), orDash(it.Type), orDash(it.Title), ref})
+				sid := ""
+				if it.ScheduleID != 0 {
+					sid = strconv.FormatInt(it.ScheduleID, 10)
+				}
+				rows = append(rows, []string{orDash(it.Date), orDash(it.Type), orDash(it.Title), ref, orDash(sid)})
 			}
-			return renderTableTo(cmd.OutOrStdout(), opts.Format, []string{"date", "type", "title", "ref"}, rows)
+			return renderTableTo(cmd.OutOrStdout(), opts.Format, []string{"date", "type", "title", "ref", "schedule_id"}, rows)
 		},
 	}
 
