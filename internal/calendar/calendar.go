@@ -15,6 +15,7 @@ type Item struct {
 	Title      string `json:"title,omitempty"`
 	WorkoutID  int64  `json:"workout_id,omitempty"`
 	ActivityID int64  `json:"activity_id,omitempty"`
+	ScheduleID int64  `json:"schedule_id,omitempty"`
 }
 
 type calItemRaw struct {
@@ -24,6 +25,14 @@ type calItemRaw struct {
 	Title        string `json:"title"`
 	WorkoutID    int64  `json:"workoutId"`
 	ActivityID   int64  `json:"activityId"`
+	ID           *int64 `json:"id"`
+}
+
+func scheduleIDFromRaw(id *int64) int64 {
+	if id == nil || *id == 0 {
+		return 0
+	}
+	return *id
 }
 
 type monthRaw struct {
@@ -55,6 +64,7 @@ func Month(ctx context.Context, c *client.Client, year, month int) ([]Item, erro
 			Title:      it.Title,
 			WorkoutID:  it.WorkoutID,
 			ActivityID: it.ActivityID,
+			ScheduleID: scheduleIDFromRaw(it.ID),
 		})
 	}
 	return out, nil
