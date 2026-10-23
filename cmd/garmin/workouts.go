@@ -28,6 +28,7 @@ func NewWorkoutsCmd(opts *globalOptions) *cobra.Command {
 		newWorkoutsUpdateCmd(opts),
 		newWorkoutsDeleteCmd(opts),
 		newWorkoutsScheduleCmd(opts),
+		newWorkoutsMoveCmd(opts),
 		newWorkoutsUnscheduleCmd(opts),
 		newWorkoutsExportCmd(opts),
 	)
@@ -35,11 +36,78 @@ func NewWorkoutsCmd(opts *globalOptions) *cobra.Command {
 	return cmd
 }
 
+type unscheduleView struct {
+	ScheduleID int64  `json:"schedule_id"`
+	Status     string `json:"status"`
+}
+
+type deleteView struct {
+	ID     int64  `json:"id"`
+	Status string `json:"status"`
+}
+
+func newWorkoutsMoveCmd(opts *globalOptions) *cobra.Command {
+	var date string
+
+	cmd := &cobra.Command{
+		Use:   "move [schedule-id]",
+		Short: "Move one scheduled workout occurrence to a new date",
+		Long: `Move one scheduled workout occurrence onto a new date. The occurrence keeps its schedule id, so the old date does not keep a copy.
+
+  garmin calendar --month 2026-10
+  garmin workouts move <schedule-id> --date 2026-10-23`,
+		Args: cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			id, err := strconv.ParseInt(args[0], 10, 64)
+			if err != nil {
+				return fmt.Errorf("invalid schedule id %q", args[0])
+			}
+			if strings.TrimSpace(date) == "" {
+				return fmt.Errorf("--date is required (YYYY-MM-DD)")
+			}
+
+			c, err := newAuthedClient(cmd, opts)
+			if err != nil {
+				return err
+			}
+
+			ctx := cmd.Context()
+			res, err := workouts.Move(ctx, c, id, strings.TrimSpace(date))
+			if err != nil {
+				return handleAuthedErrorTo(cmd.ErrOrStderr(), opts, err)
+			}
+
+			if opts.Format == "json" {
+				return output.JSONTo(cmd.OutOrStdout(), res)
+			}
+			fields := map[string]string{
+				"schedule_id": strconv.FormatInt(res.ScheduleID, 10),
+				"date":        res.Date,
+				"status":      res.Status,
+			}
+			if res.WorkoutID != 0 {
+				fields["workout_id"] = strconv.FormatInt(res.WorkoutID, 10)
+			}
+			if res.PreviousDate != "" {
+				fields["previous_date"] = res.PreviousDate
+			}
+			return renderKVTo(cmd.OutOrStdout(), opts.Format, "Workout moved", fields)
+		},
+	}
+
+	cmd.Flags().StringVar(&date, "date", "", "Date to move the occurrence to (YYYY-MM-DD)")
+	return cmd
+}
+
 func newWorkoutsUnscheduleCmd(opts *globalOptions) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "unschedule [schedule-id]",
 		Short: "Remove a scheduled workout occurrence (by schedule id)",
-		Args:  cobra.ExactArgs(1),
+		Long: `Remove one scheduled workout occurrence. Pass the schedule_id from garmin calendar. The workout definition stays. garmin workouts delete removes the definition and cannot be undone.
+
+  garmin calendar --month 2026-10
+  garmin workouts unschedule <schedule-id>`,
+		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			id, err := strconv.ParseInt(args[0], 10, 64)
 			if err != nil {
@@ -56,6 +124,10 @@ func newWorkoutsUnscheduleCmd(opts *globalOptions) *cobra.Command {
 				return handleAuthedErrorTo(cmd.ErrOrStderr(), opts, err)
 			}
 
+			view := unscheduleView{ScheduleID: id, Status: "unscheduled"}
+			if opts.Format == "json" {
+				return output.JSONTo(cmd.OutOrStdout(), view)
+			}
 			return renderKVTo(cmd.OutOrStdout(), opts.Format, "Workout unscheduled", map[string]string{
 				"schedule_id": args[0],
 				"status":      "unscheduled",
@@ -332,6 +404,7 @@ func newWorkoutsDeleteCmd(opts *globalOptions) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "delete [workout-id]",
 		Short: "Delete a workout (irreversible)",
+		Long:  `Delete a workout definition. This cannot be undone. To drop one planned date and keep the definition, use garmin workouts unschedule with the calendar schedule_id.`,
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			id, err := strconv.ParseInt(args[0], 10, 64)
@@ -353,6 +426,10 @@ func newWorkoutsDeleteCmd(opts *globalOptions) *cobra.Command {
 				return handleAuthedErrorTo(cmd.ErrOrStderr(), opts, err)
 			}
 
+			view := deleteView{ID: id, Status: "deleted"}
+			if opts.Format == "json" {
+				return output.JSONTo(cmd.OutOrStdout(), view)
+			}
 			return renderKVTo(cmd.OutOrStdout(), opts.Format, "Workout deleted", map[string]string{
 				"id":     args[0],
 				"status": "deleted",
